@@ -6,6 +6,9 @@ import type { SessionState } from '@/lib/state';
 
 export const MOBILE_QUERY = '(max-width: 768px)';
 
+export const isMobile = () =>
+  typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches;
+
 // True on phone-width viewports. Initializes false (matches the statically
 // rendered desktop markup), corrects after hydration.
 export function useCompact(): boolean {
@@ -20,12 +23,25 @@ export function useCompact(): boolean {
   return compact;
 }
 
+// The node the session is quietly inviting next — it breathes on the map.
+export type CueTarget = 'complaint' | 'mechanism' | 'practice' | null;
+
 export interface GeometryProps {
   session: SessionData;
   state: SessionState;
   practiceUnlocked: boolean;
+  compact: boolean;
+  cue: CueTarget;
   onSelect: (ref: NodeRef) => void;
   onArrive: () => void;
+}
+
+// Every geometry exports a layout: canvas size + where any node lives.
+// The camera (MapViewport) uses it to focus selections.
+export interface MapLayout {
+  w: number;
+  h: number;
+  pos: (ref: NodeRef) => { x: number; y: number };
 }
 
 export function polar(cx: number, cy: number, r: number, angleDeg: number): [number, number] {
@@ -79,6 +95,7 @@ interface MapNodeProps {
   selected?: boolean;
   visited?: boolean;
   locked?: boolean;
+  cue?: boolean; // breathes — the map's quiet invitation
   labelPos?: 'below' | 'above' | 'left' | 'right';
   onClick?: () => void;
 }
@@ -95,6 +112,7 @@ export function MapNode({
   selected,
   visited,
   locked,
+  cue,
   labelPos = 'below',
   onClick,
 }: MapNodeProps) {
@@ -118,7 +136,9 @@ export function MapNode({
 
   return (
     <g
-      className={`mnode enter${selected ? ' selected' : ''}${locked ? ' locked' : ''}`}
+      className={`mnode enter${selected ? ' selected' : ''}${locked ? ' locked' : ''}${
+        visited ? ' visited' : ''
+      }`}
       onClick={locked ? undefined : onClick}
     >
       {/* invisible hit area — keeps small nodes at a ≥44px touch target */}
@@ -126,7 +146,18 @@ export function MapNode({
         <circle cx={x} cy={y} r={Math.max(r + 10, 26)} fill="transparent" stroke="none" />
       )}
       {selected && (
-        <circle cx={x} cy={y} r={r + 6} fill="none" stroke={color} strokeOpacity={0.5} />
+        <circle
+          className="halo"
+          cx={x}
+          cy={y}
+          r={r + 7}
+          fill="none"
+          stroke={color}
+          strokeOpacity={0.55}
+        />
+      )}
+      {cue && (
+        <circle className="cue-ring" cx={x} cy={y} r={r + 5} fill="none" stroke={color} />
       )}
       <circle
         className="core"
@@ -139,6 +170,7 @@ export function MapNode({
         strokeWidth={1.4}
         strokeOpacity={locked ? 0.35 : 0.9}
         strokeDasharray={rejected ? '4 4' : undefined}
+        filter={visited ? 'url(#nodeGlow)' : undefined}
       />
       {rejected && (
         <text x={x} y={y + 4} textAnchor="middle" fontSize={12} fill={color} opacity={0.9}>

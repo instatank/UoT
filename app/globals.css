@@ -31,8 +31,7 @@ html {
 
 /* pan/pinch stay native; double-tap-to-zoom delay is dropped on interactives */
 button,
-a,
-svg {
+a {
   touch-action: manipulation;
 }
 
@@ -66,12 +65,102 @@ button {
   color: var(--text-muted);
 }
 
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes surface {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- pills — the app's shared small-surface language ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(20, 26, 38, 0.4);
+  white-space: nowrap;
+}
+
+.pill.dim {
+  color: var(--faint);
+}
+
+.pill.dashed {
+  border-style: dashed;
+  color: var(--faint);
+}
+
+.pill.ember {
+  color: var(--ember);
+  border-color: rgba(176, 101, 74, 0.55);
+  border-style: dashed;
+}
+
+.pill.gold {
+  color: var(--gold);
+  border-color: rgba(216, 201, 138, 0.45);
+}
+
+button.pill {
+  cursor: pointer;
+  transition: color 0.3s, border-color 0.3s, background 0.3s;
+}
+
+button.pill:hover {
+  color: var(--text);
+  border-color: #2b3550;
+}
+
+.pill.listen {
+  margin-left: auto;
+  min-height: 32px;
+}
+
+.pill.listen.on {
+  color: var(--gold);
+  border-color: rgba(216, 201, 138, 0.55);
+}
+
+.pill.action {
+  margin-top: 22px;
+  padding: 10px 22px;
+  font-size: 12px;
+  min-height: 44px;
+}
+
 /* ---------- home / session picker ---------- */
 
 .home {
   max-width: 720px;
   margin: 0 auto;
-  padding: 12vh 24px 8vh;
+  padding: 11vh 24px 8vh;
+}
+
+.home > .eyebrow,
+.home h1,
+.home .sub {
+  animation: riseIn 0.9s ease both;
 }
 
 .home h1 {
@@ -80,34 +169,88 @@ button {
   font-size: 34px;
   letter-spacing: 0.01em;
   margin: 14px 0 10px;
+  animation-delay: 0.08s;
 }
 
 .home .sub {
   color: var(--text-muted);
   max-width: 54ch;
-  margin-bottom: 48px;
+  margin-bottom: 44px;
+  animation-delay: 0.16s;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .session-card {
   display: block;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 22px 24px;
-  margin-bottom: 16px;
+  border-radius: 14px;
+  padding: 20px 22px;
   background: rgba(15, 19, 28, 0.55);
-  transition: border-color 0.4s ease, background 0.4s ease;
+  transition: border-color 0.4s ease, background 0.4s ease, transform 0.4s ease;
+  animation: riseIn 0.9s ease both;
+}
+
+.session-card:nth-child(1) {
+  animation-delay: 0.22s;
+}
+.session-card:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.session-card:nth-child(3) {
+  animation-delay: 0.38s;
 }
 
 .session-card:hover {
   border-color: #2b3550;
   background: rgba(19, 24, 36, 0.75);
+  transform: translateY(-2px);
+}
+
+.session-card:active {
+  transform: translateY(0);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lineage-dots {
+  display: inline-flex;
+  gap: 7px;
+}
+
+.lineage-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid;
+  opacity: 0.85;
+}
+
+.lineage-dots .dot.rejected {
+  border-style: dashed;
 }
 
 .session-card .complaint {
   font-family: var(--serif);
   font-size: 19px;
-  margin-top: 8px;
+  margin-top: 12px;
   color: var(--text);
+}
+
+.card-sub {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
 }
 
 .chip {
@@ -134,13 +277,14 @@ button {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 .session-header {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 14px 22px;
+  gap: 16px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--line-soft);
   flex-shrink: 0;
 }
@@ -149,6 +293,7 @@ button {
   color: var(--text-muted);
   font-size: 13px;
   transition: color 0.3s;
+  white-space: nowrap;
 }
 .session-header .back:hover {
   color: var(--text);
@@ -165,12 +310,33 @@ button {
   min-width: 0;
 }
 
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--faint);
+  font-size: 15px;
+  flex-shrink: 0;
+  transition: color 0.3s, border-color 0.3s, box-shadow 0.4s;
+}
+
+.icon-btn:hover {
+  color: var(--text-muted);
+}
+
+.icon-btn.active {
+  color: var(--gold);
+  border-color: rgba(216, 201, 138, 0.5);
+  box-shadow: 0 0 14px rgba(216, 201, 138, 0.12);
+}
+
 .geo-switch {
   display: flex;
   gap: 2px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 2px;
+  border-radius: 999px;
+  padding: 3px;
   flex-shrink: 0;
 }
 
@@ -178,8 +344,8 @@ button {
   font-size: 12.5px;
   letter-spacing: 0.04em;
   color: var(--text-muted);
-  padding: 5px 14px;
-  border-radius: 6px;
+  padding: 6px 16px;
+  border-radius: 999px;
   transition: color 0.3s, background 0.3s;
 }
 
@@ -196,133 +362,119 @@ button {
   display: flex;
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
-.map-area {
+/* ---------- map stage + viewport ---------- */
+
+.map-stage {
   flex: 1;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
+  position: relative;
   overflow: hidden;
+  transition: filter 0.55s ease, transform 0.55s ease;
 }
 
-.map-area svg {
+/* quiet aurora behind the map — atmosphere, not decoration */
+.map-stage::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(55% 45% at 50% 40%, rgba(62, 76, 112, 0.16), transparent 70%);
+  pointer-events: none;
+  animation: aurora 46s ease-in-out infinite alternate;
+}
+
+@keyframes aurora {
+  from {
+    transform: translate(-3%, -2%) scale(1);
+  }
+  to {
+    transform: translate(3%, 2%) scale(1.06);
+  }
+}
+
+.map-viewport {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.map-viewport.ready {
+  opacity: 1;
+}
+
+.map-svg {
   width: 100%;
   height: 100%;
-  max-height: calc(100vh - 60px);
-}
-
-/* ---------- panel ---------- */
-
-.panel {
-  width: 390px;
-  flex-shrink: 0;
-  border-left: 1px solid var(--line-soft);
-  background: rgba(13, 17, 25, 0.6);
-  padding: 30px 30px 40px;
-  overflow-y: auto;
-}
-
-.panel .kind {
-  margin-bottom: 14px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.panel h2 {
-  font-family: var(--serif);
-  font-weight: 400;
-  font-size: 22px;
-  line-height: 1.3;
-  margin-bottom: 6px;
-}
-
-.panel .citation {
-  color: var(--text-muted);
-  font-size: 12.5px;
-  margin-bottom: 18px;
-}
-
-.panel .prov {
-  color: var(--faint);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px dashed var(--line);
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-blockquote.passage {
-  font-family: var(--serif);
-  font-size: 16.5px;
-  line-height: 1.65;
-  color: #dde3ec;
-  border-left: 2px solid var(--line);
-  padding: 2px 0 2px 18px;
-  margin: 18px 0;
-}
-
-.panel .reading,
-.panel .body-text {
-  color: var(--text);
-  margin: 14px 0;
-}
-
-.panel .rejection {
-  margin-top: 20px;
-  border: 1px dashed rgba(176, 101, 74, 0.55);
-  border-radius: 8px;
-  padding: 16px 18px;
-  background: rgba(176, 101, 74, 0.06);
-}
-
-.panel .rejection .eyebrow {
-  color: var(--ember);
-  margin-bottom: 8px;
   display: block;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.panel .hint {
-  margin-top: 26px;
-  color: var(--faint);
-  font-size: 13px;
-  font-style: italic;
+.map-svg:active {
+  cursor: grabbing;
 }
 
-.panel .deeper-btn {
-  margin-top: 22px;
-  display: inline-block;
-  font-size: 13px;
-  color: var(--text-muted);
+.map-svg text {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* decorative geometry never swallows a tap — background taps stay background */
+.map-svg .decor,
+.map-svg .edge,
+.map-svg .edge-faint,
+.map-svg .stream,
+.map-svg .stratum-label {
+  pointer-events: none;
+}
+
+.zoom-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 3;
+}
+
+.zoom-controls button {
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 7px 18px;
+  border-radius: 50%;
+  background: rgba(12, 16, 24, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--text-muted);
+  font-size: 16px;
   transition: color 0.3s, border-color 0.3s;
 }
 
-.panel .deeper-btn:hover {
+.zoom-controls button:hover {
   color: var(--text);
   border-color: #2b3550;
 }
 
-.panel ol.steps {
-  margin: 14px 0 0 18px;
-}
-.panel ol.steps li {
-  margin-bottom: 12px;
-}
-
-.panel-empty {
+.map-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
   color: var(--faint);
-  font-style: italic;
-  margin-top: 40vh;
-  transform: translateY(-50%);
-  text-align: center;
-  padding: 0 10px;
+  background: rgba(12, 16, 24, 0.6);
+  border-radius: 999px;
+  padding: 8px 18px;
+  pointer-events: none;
+  animation: surface 1.4s ease 0.8s both;
+  z-index: 2;
 }
 
 /* ---------- SVG map nodes ---------- */
@@ -332,7 +484,7 @@ blockquote.passage {
 }
 
 .mnode circle.core {
-  transition: fill 0.5s ease, stroke 0.5s ease, r 0.5s ease;
+  transition: fill 0.5s ease, stroke 0.5s ease, fill-opacity 0.5s ease;
 }
 
 .mnode:hover circle.core {
@@ -363,6 +515,49 @@ blockquote.passage {
   cursor: default;
 }
 
+.mnode .halo {
+  animation: haloIn 0.6s ease both;
+}
+
+@keyframes haloIn {
+  from {
+    stroke-opacity: 0;
+  }
+}
+
+/* the map's quiet invitation — the next node breathes */
+.cue-ring {
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cueBreathe 4.6s ease-in-out infinite;
+}
+
+@keyframes cueBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+    stroke-opacity: 0.06;
+  }
+  50% {
+    transform: scale(1.4);
+    stroke-opacity: 0.5;
+  }
+}
+
+/* unlocked practice edge shimmers by slowly rotating its dashes */
+.practice-edge.live {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: edgeTurn 240s linear infinite;
+}
+
+@keyframes edgeTurn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .edge {
   stroke: #232c3f;
   stroke-width: 1;
@@ -375,6 +570,19 @@ blockquote.passage {
   stroke-dasharray: 2 5;
   stroke-width: 1;
   fill: none;
+}
+
+/* edges draw themselves in — excavation made visible */
+.draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawIn 1.3s cubic-bezier(0.4, 0, 0.2, 1) 0.12s forwards;
+}
+
+@keyframes drawIn {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .stream {
@@ -400,12 +608,182 @@ blockquote.passage {
   animation: surface 1.1s ease both;
 }
 
-@keyframes surface {
-  from {
-    opacity: 0;
+/* ---------- detail sheet (mobile) / panel (desktop) ---------- */
+
+.sheet {
+  z-index: 10;
+}
+
+.sheet-grip {
+  display: none;
+}
+
+.node-detail {
+  animation: riseIn 0.5s ease both;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.node-detail h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.node-detail .citation {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-bottom: 16px;
+}
+
+blockquote.passage {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  line-height: 1.65;
+  color: #dde3ec;
+  border-left: 2px solid var(--line);
+  padding: 2px 0 2px 18px;
+  margin: 16px 0;
+}
+
+.node-detail .reading,
+.node-detail .body-text {
+  color: var(--text);
+  margin: 12px 0;
+}
+
+.node-detail .hint {
+  margin-top: 22px;
+  color: var(--faint);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* collapsible sections — less on screen, everything one tap away */
+.fold {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  margin: 16px 0;
+  background: rgba(15, 19, 28, 0.45);
+}
+
+.fold-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  min-height: 44px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+
+.fold-head:hover {
+  color: var(--text);
+}
+
+.fold-head .chev {
+  color: var(--faint);
+  transition: transform 0.35s ease;
+}
+
+.fold.open .fold-head .chev {
+  transform: rotate(180deg);
+}
+
+.fold-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fold.open .fold-body {
+  grid-template-rows: 1fr;
+}
+
+.fold-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fold-inner > * {
+  margin: 2px 16px 14px;
+}
+
+.fold.ember {
+  border-color: rgba(176, 101, 74, 0.45);
+  border-style: dashed;
+  background: rgba(176, 101, 74, 0.05);
+}
+
+.fold.ember .fold-head {
+  color: var(--ember);
+}
+
+ol.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 14px 0 0;
+}
+
+ol.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 12px 14px 12px 48px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: rgba(15, 19, 28, 0.4);
+}
+
+ol.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 13px;
+  top: 12px;
+  width: 23px;
+  height: 23px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--gold);
+}
+
+.panel-empty {
+  color: var(--faint);
+  font-style: italic;
+  text-align: center;
+  margin-top: 38vh;
+}
+
+/* desktop: the sheet is a fixed right column */
+@media (min-width: 769px) {
+  .sheet {
+    width: 400px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--line-soft);
+    background: rgba(13, 17, 25, 0.6);
+    display: flex;
+    flex-direction: column;
   }
-  to {
-    opacity: 1;
+
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px 30px 40px;
   }
 }
 
@@ -416,6 +794,7 @@ blockquote.passage {
   inset: 0;
   background: rgba(5, 7, 11, 0.82);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,9 +808,37 @@ blockquote.passage {
   overflow-y: auto;
   background: #0e121b;
   border: 1px solid #262f44;
-  border-radius: 14px;
-  padding: 44px 48px;
+  border-radius: 16px;
+  padding: 42px 46px;
   margin: 20px;
+  box-shadow: 0 0 80px rgba(216, 201, 138, 0.05);
+}
+
+.arrival .stage {
+  animation: riseIn 0.8s ease both;
+}
+
+.arrival .s1 {
+  animation-delay: 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.arrival .s2 {
+  animation-delay: 0.45s;
+}
+
+.arrival .s3 {
+  animation-delay: 1s;
+}
+
+.arrival .s4 {
+  animation-delay: 1.2s;
+}
+
+.arrival .s5 {
+  animation-delay: 1.9s;
 }
 
 .arrival .eyebrow {
@@ -442,14 +849,14 @@ blockquote.passage {
   font-family: var(--serif);
   font-size: 18px;
   line-height: 1.7;
-  margin: 18px 0 30px;
+  margin: 18px 0 28px;
   color: #e3e8f0;
 }
 
 .arrival hr {
   border: none;
   border-top: 1px solid var(--line);
-  margin: 26px 0;
+  margin: 24px 0;
 }
 
 .arrival h3 {
@@ -466,17 +873,40 @@ blockquote.passage {
 }
 
 .arrival ol {
-  margin-left: 20px;
+  list-style: none;
+  counter-reset: step;
 }
+
 .arrival ol li {
-  margin-bottom: 12px;
+  counter-increment: step;
+  position: relative;
+  padding: 10px 12px 10px 44px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  margin-bottom: 9px;
+  background: rgba(15, 19, 28, 0.4);
+}
+
+.arrival ol li::before {
+  content: counter(step);
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--gold);
 }
 
 .arrival-foot {
-  margin-top: 34px;
+  margin-top: 30px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
 }
 
 .arrival-foot .recorded {
@@ -502,23 +932,11 @@ blockquote.passage {
 }
 
 /* ---------- mobile: portrait phones ---------- */
-/* The panel becomes a bottom sheet; each map keeps a legible scale and pans
-   natively instead of shrinking to fit. */
-
-.sheet-handle,
-.sheet-peek {
-  display: none;
-}
 
 @media (max-width: 768px) {
-  .session-shell {
-    height: 100vh;
-    height: 100dvh;
-  }
-
   .session-header {
     flex-wrap: wrap;
-    gap: 6px 12px;
+    gap: 8px 12px;
     padding: 10px 14px;
     padding-top: calc(10px + env(safe-area-inset-top));
     padding-left: calc(14px + env(safe-area-inset-left));
@@ -528,7 +946,12 @@ blockquote.passage {
   .session-header .back {
     display: inline-flex;
     align-items: center;
-    min-height: 32px;
+    min-height: 38px;
+  }
+
+  /* the pain category lives in the complaint detail on phones */
+  .session-header .chip {
+    display: none;
   }
 
   .geo-switch {
@@ -541,120 +964,115 @@ blockquote.passage {
     padding: 10px 0;
   }
 
-  .session-body {
-    position: relative;
+  /* the map sinks back while reading */
+  .session-shell[data-sheet='full'] .map-stage {
+    filter: brightness(0.45) saturate(0.8);
+    transform: scale(0.98);
   }
 
-  .map-area {
-    display: block;
-    padding: 0;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+  .session-shell[data-sheet='half'] .map-stage {
+    filter: brightness(0.88);
   }
 
-  .map-area svg {
-    max-height: none;
-    display: block;
-  }
-
-  /* while the sheet is up, give the map scroll room so any node — practice
-     at bedrock included — can be panned above the sheet and tapped */
-  .session-body.sheet-open .map-area svg {
-    margin-bottom: 58vh;
-    margin-bottom: 58dvh;
-  }
-
-  /* radial: full map at 1:1 label scale; pan the field, selection recenters */
-  .map-area.geo-radial svg {
-    width: 800px;
-    height: 800px;
-  }
-
-  /* river: the flow stays left→right; swipe along the river */
-  .map-area.geo-river svg {
-    width: 1000px;
-    height: 640px;
-  }
-
-  /* descent: portrait-fit strata; the only axis is down */
-  .map-area.geo-descent svg {
-    width: 100%;
-    height: auto;
-  }
-
-  .panel {
+  /* staged bottom sheet */
+  .sheet {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
-    width: auto;
-    max-height: 56vh;
-    max-height: 56dvh;
-    border-left: none;
-    border-top: 1px solid #262f44;
-    border-radius: 16px 16px 0 0;
-    background: rgba(12, 16, 24, 0.96);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.5);
-    padding: 0 22px calc(30px + env(safe-area-inset-bottom));
-    transform: translateY(104%);
-    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 10;
-  }
-
-  .panel.open {
-    transform: translateY(0);
-  }
-
-  .sheet-handle {
-    display: block;
-    width: 100%;
-    padding: 14px 0 16px;
-    position: sticky;
     top: 0;
-    background: rgba(12, 16, 24, 0.92);
-    z-index: 1;
+    height: 100vh;
+    height: 100dvh;
+    --sheet-y: 52dvh;
+    transform: translateY(var(--sheet-y));
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    border-top: 1px solid #2a3450;
+    border-radius: 18px 18px 0 0;
+    background: rgba(12, 16, 24, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
   }
 
-  .sheet-handle span {
+  .sheet.pos-full {
+    --sheet-y: 10dvh;
+  }
+
+  .sheet.pos-half {
+    --sheet-y: 52dvh;
+  }
+
+  .sheet.pos-peek {
+    --sheet-y: calc(100dvh - 92px);
+  }
+
+  .sheet.pos-hidden {
+    --sheet-y: 104dvh;
+  }
+
+  .sheet.dragging {
+    transition: none;
+  }
+
+  .sheet-grip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px 8px;
+    cursor: grab;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+
+  .grip-pill {
     display: block;
     width: 44px;
-    height: 4px;
-    border-radius: 2px;
+    height: 5px;
+    border-radius: 3px;
     background: #2b3550;
-    margin: 0 auto;
   }
 
-  .sheet-peek {
-    display: inline-flex;
-    align-items: center;
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    z-index: 9;
-    min-height: 44px;
-    font-size: 12.5px;
-    letter-spacing: 0.08em;
+  .grip-label {
+    display: none;
+    font-family: var(--serif);
+    font-size: 14px;
     color: var(--text-muted);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 8px 22px;
-    background: rgba(12, 16, 24, 0.85);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    max-width: 86vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .panel .deeper-btn {
-    min-height: 44px;
-    padding: 10px 22px;
+  .sheet.pos-peek .grip-label {
+    display: block;
+  }
+
+  .sheet-body {
+    height: calc(100dvh - var(--sheet-y) - 46px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 22px calc(34px + env(safe-area-inset-bottom));
+  }
+
+  .panel-empty {
+    display: none;
+  }
+
+  .pill.action,
+  .fold-head {
+    min-height: 46px;
+  }
+
+  .zoom-controls {
+    top: 12px;
+    right: calc(10px + env(safe-area-inset-right));
   }
 
   .arrival {
     margin: 12px;
-    padding: 32px 24px calc(26px + env(safe-area-inset-bottom));
+    padding: 30px 22px calc(26px + env(safe-area-inset-bottom));
     max-height: 86vh;
     max-height: 88dvh;
   }
@@ -684,5 +1102,17 @@ blockquote.passage {
 
   .home h1 {
     font-size: 29px;
+  }
+}
+
+/* ---------- stillness for those who ask for it ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

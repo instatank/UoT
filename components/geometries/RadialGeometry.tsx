@@ -1,9 +1,12 @@
 'use client';
 
+import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapNode, polar } from './common';
+import { GeometryProps, MapLayout, MapNode, polar } from './common';
 
+const W = 800;
+const H = 800;
 const CX = 400;
 const CY = 400;
 const R_MECH = 140; // mechanism ring — everything routes through it
@@ -14,6 +17,31 @@ const R_PRACTICE = 352; // the practice edge: every path terminates here
 const COMPLAINT_COLOR = '#b9c3d6';
 const MECH_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
+
+function anglesFor(session: SessionData): number[] {
+  const N = session.parallels.length;
+  return session.parallels.map((_, i) => -90 + (360 / N) * i);
+}
+
+export function radialLayout(session: SessionData): MapLayout {
+  const angles = anglesFor(session);
+  const idx = (id: string) => session.parallels.findIndex((p) => p.id === id);
+  return {
+    w: W,
+    h: H,
+    pos: (ref: NodeRef) => {
+      if (ref.kind === 'complaint') return { x: CX, y: CY };
+      if (ref.kind === 'mechanism') return { x: CX, y: CY - R_MECH };
+      if (ref.kind === 'practice') return { x: CX, y: CY + R_PRACTICE };
+      if (ref.kind === 'parallel') {
+        const [x, y] = polar(CX, CY, R_PARALLEL, angles[idx(ref.id)]);
+        return { x, y };
+      }
+      const [x, y] = polar(CX, CY, R_DEEP, angles[idx(ref.parallelId)]);
+      return { x, y };
+    },
+  };
+}
 
 function labelPosFor(angle: number): 'above' | 'below' | 'left' | 'right' {
   const a = ((angle + 180) % 360) - 180; // normalize to -180..180
@@ -26,21 +54,23 @@ export default function RadialGeometry({
   session,
   state,
   practiceUnlocked,
+  cue,
   onSelect,
   onArrive,
 }: GeometryProps) {
-  const N = session.parallels.length;
-  const angles = session.parallels.map((_, i) => -90 + (360 / N) * i);
+  const angles = anglesFor(session);
 
   return (
-    <svg viewBox="0 0 800 800" role="img" aria-label="Bounded radial session map">
+    <g>
       {/* practice edge — outer boundary, always present, locked until earned */}
       <g
         className={`mnode enter${practiceUnlocked ? '' : ' locked'}`}
         onClick={practiceUnlocked ? onArrive : undefined}
       >
-        <circle cx={CX} cy={CY} r={R_PRACTICE} fill="none" stroke="transparent" strokeWidth={44} />
+        {/* modest hit stroke — arrival is deliberate, not a stray tap */}
+        <circle cx={CX} cy={CY} r={R_PRACTICE} fill="none" stroke="transparent" strokeWidth={26} />
         <circle
+          className={practiceUnlocked ? 'practice-edge live' : 'practice-edge'}
           cx={CX}
           cy={CY}
           r={R_PRACTICE}
@@ -49,6 +79,7 @@ export default function RadialGeometry({
           strokeWidth={1.2}
           strokeDasharray="3 7"
           strokeOpacity={practiceUnlocked ? 0.8 : 0.9}
+          filter={practiceUnlocked ? 'url(#edgeGlow)' : undefined}
         />
         <text x={CX} y={CY - R_PRACTICE - 12} textAnchor="middle" opacity={practiceUnlocked ? 1 : 0.5}>
           {practiceUnlocked ? 'the practice edge — step out' : 'the practice edge'}
@@ -58,7 +89,7 @@ export default function RadialGeometry({
       {/* mechanism ring */}
       {state.complaintTouched && (
         <circle
-          className="enter"
+          className="enter decor"
           cx={CX}
           cy={CY}
           r={R_MECH}
@@ -71,7 +102,8 @@ export default function RadialGeometry({
       {/* complaint → mechanism spoke */}
       {state.complaintTouched && (
         <line
-          className="edge enter"
+          className="edge draw"
+          pathLength={1}
           x1={CX}
           y1={CY - 46}
           x2={CX}
@@ -84,7 +116,9 @@ export default function RadialGeometry({
         session.parallels.map((p, i) => {
           const [x1, y1] = polar(CX, CY, R_MECH, angles[i]);
           const [x2, y2] = polar(CX, CY, R_PARALLEL - 17, angles[i]);
-          return <line key={p.id} className="edge enter" x1={x1} y1={y1} x2={x2} y2={y2} />;
+          return (
+            <line key={p.id} className="edge draw" pathLength={1} x1={x1} y1={y1} x2={x2} y2={y2} />
+          );
         })}
 
       {/* deepening spokes + termination ticks toward the practice edge */}
@@ -96,7 +130,7 @@ export default function RadialGeometry({
         const [tx2, ty2] = polar(CX, CY, R_PRACTICE, angles[i]);
         return (
           <g key={p.id} className="enter">
-            <line className="edge" x1={x1} y1={y1} x2={x2} y2={y2} />
+            <line className="edge draw" pathLength={1} x1={x1} y1={y1} x2={x2} y2={y2} />
             <line className="edge-faint" x1={tx1} y1={ty1} x2={tx2} y2={ty2} />
           </g>
         );
@@ -111,6 +145,7 @@ export default function RadialGeometry({
         color={COMPLAINT_COLOR}
         visited={state.complaintTouched}
         selected={sameNode(state.selected, { kind: 'complaint' })}
+        cue={cue === 'complaint'}
         onClick={() => onSelect({ kind: 'complaint' })}
       />
 
@@ -125,6 +160,7 @@ export default function RadialGeometry({
           color={MECH_COLOR}
           visited={state.mechanismRevealed}
           selected={sameNode(state.selected, { kind: 'mechanism' })}
+          cue={cue === 'mechanism'}
           labelPos="right"
           onClick={() => onSelect({ kind: 'mechanism' })}
         />
@@ -187,9 +223,10 @@ export default function RadialGeometry({
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}
+        cue={cue === 'practice'}
         labelPos="above"
         onClick={onArrive}
       />
-    </svg>
+    </g>
   );
 }

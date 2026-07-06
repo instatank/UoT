@@ -1,8 +1,9 @@
 'use client';
 
+import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapNode, useCompact } from './common';
+import { GeometryProps, MapLayout, MapNode } from './common';
 
 const COMPLAINT_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
@@ -44,19 +45,18 @@ const COMPACT = {
   TAIL: 110,
 };
 
-export default function DescentGeometry({
-  session,
-  state,
-  practiceUnlocked,
-  onSelect,
-  onArrive,
-}: GeometryProps) {
-  const compact = useCompact();
+interface DescentFrame {
+  L: typeof DESKTOP;
+  BAND_BEDROCK: number;
+  PRACTICE_Y: number;
+  H: number;
+  positions: { x: number; y: number }[];
+  deepPos: (i: number) => { x: number; y: number; ddx: number };
+}
+
+function frame(session: SessionData, compact: boolean): DescentFrame {
   const L = compact ? COMPACT : DESKTOP;
   const N = session.parallels.length;
-
-  // strata depth scales with the dig on compact; fixed on desktop to keep
-  // the original tuned proportions
   const lastRowY = L.FIRST_ROW_Y + (N - 1) * L.ROW_H;
   const BAND_BEDROCK = compact ? lastRowY + L.DEEP_DY + 60 : 740;
   const PRACTICE_Y = compact ? BAND_BEDROCK + L.PRACTICE_GAP : 850;
@@ -73,16 +73,58 @@ export default function DescentGeometry({
     return { x, y };
   });
 
+  const deepPos = (i: number) => {
+    const { x, y } = positions[i];
+    const dx = x < L.SHAFT_X ? -L.DEEP_DX : L.DEEP_DX;
+    // compact: the pit is narrow, so deepenings step inward toward the
+    // shaft instead of outward past the edge
+    const ddx = compact ? -dx : dx;
+    return { x: x + ddx, y: y + L.DEEP_DY, ddx };
+  };
+
+  return { L, BAND_BEDROCK, PRACTICE_Y, H, positions, deepPos };
+}
+
+export function descentLayout(session: SessionData, compact: boolean): MapLayout {
+  const f = frame(session, compact);
+  const idx = (id: string) => session.parallels.findIndex((p) => p.id === id);
+  return {
+    w: f.L.W,
+    h: f.H,
+    pos: (ref: NodeRef) => {
+      if (ref.kind === 'complaint') return { x: f.L.SHAFT_X, y: f.L.COMPLAINT_Y };
+      if (ref.kind === 'mechanism') return { x: f.L.SHAFT_X, y: f.L.MECH_Y };
+      if (ref.kind === 'practice') return { x: f.L.SHAFT_X, y: f.PRACTICE_Y };
+      if (ref.kind === 'parallel') return f.positions[idx(ref.id)];
+      const d = f.deepPos(idx(ref.parallelId));
+      return { x: d.x, y: d.y };
+    },
+  };
+}
+
+export default function DescentGeometry({
+  session,
+  state,
+  practiceUnlocked,
+  compact,
+  cue,
+  onSelect,
+  onArrive,
+}: GeometryProps) {
+  const { L, BAND_BEDROCK, PRACTICE_Y, H, positions, deepPos } = frame(session, compact);
+
   return (
-    <svg viewBox={`0 0 ${L.W} ${H}`} role="img" aria-label="Descent strata session map">
+    <g>
       {/* strata — darkening with depth */}
-      <rect x={0} y={0} width={L.W} height={L.BAND_MECH} fill="#b9c3d6" opacity={0.05} />
-      <rect x={0} y={L.BAND_MECH} width={L.W} height={L.BAND_PARALLELS - L.BAND_MECH} fill="#b9c3d6" opacity={0.03} />
-      <rect x={0} y={L.BAND_PARALLELS} width={L.W} height={BAND_BEDROCK - L.BAND_PARALLELS} fill="#b9c3d6" opacity={0.015} />
-      <rect x={0} y={BAND_BEDROCK} width={L.W} height={H - BAND_BEDROCK} fill="#000000" opacity={0.4} />
-      {[L.BAND_MECH, L.BAND_PARALLELS, BAND_BEDROCK].map((y) => (
-        <line key={y} x1={0} y1={y} x2={L.W} y2={y} stroke="#1b2230" strokeWidth={1} />
-      ))}
+      <g className="decor">
+        <rect x={0} y={0} width={L.W} height={L.BAND_MECH} fill="#b9c3d6" opacity={0.05} />
+        <rect x={0} y={L.BAND_MECH} width={L.W} height={L.BAND_PARALLELS - L.BAND_MECH} fill="#b9c3d6" opacity={0.03} />
+        <rect x={0} y={L.BAND_PARALLELS} width={L.W} height={BAND_BEDROCK - L.BAND_PARALLELS} fill="#b9c3d6" opacity={0.015} />
+        <rect x={0} y={BAND_BEDROCK} width={L.W} height={H - BAND_BEDROCK} fill="#000000" opacity={0.4} />
+        {[L.BAND_MECH, L.BAND_PARALLELS, BAND_BEDROCK].map((y) => (
+          <line key={y} x1={0} y1={y} x2={L.W} y2={y} stroke="#1b2230" strokeWidth={1} />
+        ))}
+      </g>
       <text className="stratum-label" x={24} y={40}>surface</text>
       <text className="stratum-label" x={24} y={L.BAND_MECH + 30}>mechanism</text>
       <text className="stratum-label" x={24} y={L.BAND_PARALLELS + 30}>parallels</text>
@@ -91,7 +133,8 @@ export default function DescentGeometry({
       {/* the shaft */}
       {state.complaintTouched && (
         <line
-          className="edge enter"
+          className="edge draw"
+          pathLength={1}
           x1={L.SHAFT_X}
           y1={L.COMPLAINT_Y + 30}
           x2={L.SHAFT_X}
@@ -113,15 +156,17 @@ export default function DescentGeometry({
         session.parallels.map((p, i) => {
           const { x, y } = positions[i];
           const dir = x > L.SHAFT_X ? -1 : 1;
+          const rejected = p.status === 'rejected';
           return (
             <line
               key={p.id}
-              className="edge enter"
+              className={rejected ? 'edge enter' : 'edge draw'}
+              pathLength={rejected ? undefined : 1}
               x1={L.SHAFT_X}
               y1={y}
               x2={x + dir * 15}
               y2={y}
-              strokeDasharray={p.status === 'rejected' ? '3 5' : undefined}
+              strokeDasharray={rejected ? '3 5' : undefined}
             />
           );
         })}
@@ -136,6 +181,7 @@ export default function DescentGeometry({
         color={COMPLAINT_COLOR}
         visited={state.complaintTouched}
         selected={sameNode(state.selected, { kind: 'complaint' })}
+        cue={cue === 'complaint'}
         labelPos="right"
         onClick={() => onSelect({ kind: 'complaint' })}
       />
@@ -151,6 +197,7 @@ export default function DescentGeometry({
           color={COMPLAINT_COLOR}
           visited={state.mechanismRevealed}
           selected={sameNode(state.selected, { kind: 'mechanism' })}
+          cue={cue === 'mechanism'}
           labelPos="right"
           onClick={() => onSelect({ kind: 'mechanism' })}
         />
@@ -183,28 +230,26 @@ export default function DescentGeometry({
       {session.parallels.map((p, i) => {
         if (!p.deepening || !state.visitedParallels.includes(p.id)) return null;
         const { x, y } = positions[i];
-        const dx = x < L.SHAFT_X ? -L.DEEP_DX : L.DEEP_DX;
-        // compact: the pit is narrow, so deepenings step inward toward the
-        // shaft instead of outward past the edge
-        const ddx = compact ? -dx : dx;
+        const d = deepPos(i);
         return (
           <g key={p.id} className="enter">
             <line
-              className="edge"
-              x1={x + (ddx > 0 ? 12 : -12)}
+              className="edge draw"
+              pathLength={1}
+              x1={x + (d.ddx > 0 ? 12 : -12)}
               y1={y + 10}
-              x2={x + ddx}
-              y2={y + L.DEEP_DY - 9}
+              x2={d.x}
+              y2={d.y - 9}
             />
             <MapNode
-              x={x + ddx}
-              y={y + L.DEEP_DY}
+              x={d.x}
+              y={d.y}
               r={9}
               label={p.deepening.title}
               color={lineageColor[p.lineage]}
               visited={state.visitedDeepenings.includes(p.id)}
               selected={sameNode(state.selected, { kind: 'deepening', parallelId: p.id })}
-              labelPos={ddx < 0 ? 'left' : 'right'}
+              labelPos={d.ddx < 0 ? 'left' : 'right'}
               onClick={() => onSelect({ kind: 'deepening', parallelId: p.id })}
             />
           </g>
@@ -222,9 +267,10 @@ export default function DescentGeometry({
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}
+        cue={cue === 'practice'}
         labelPos="right"
         onClick={onArrive}
       />
-    </svg>
+    </g>
   );
 }

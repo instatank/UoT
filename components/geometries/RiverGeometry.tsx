@@ -1,9 +1,12 @@
 'use client';
 
+import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapNode, smoothPath } from './common';
+import { GeometryProps, MapLayout, MapNode, smoothPath } from './common';
 
+const W = 1000;
+const H = 640;
 const SOURCE_X = 80;
 const MECH_X = 210;
 const MID_Y = 320;
@@ -15,21 +18,41 @@ const POOL_R = 46;
 const COMPLAINT_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
 
+const baseYFor = (session: SessionData) => {
+  const N = session.parallels.length;
+  return (i: number) => (N === 1 ? MID_Y : 130 + (380 / (N - 1)) * i);
+};
+// mid-stream the braids drift toward each other — cross-tradition serendipity
+const driftY = (y: number) => y + (MID_Y - y) * 0.42;
+
+export function riverLayout(session: SessionData): MapLayout {
+  const baseY = baseYFor(session);
+  const idx = (id: string) => session.parallels.findIndex((p) => p.id === id);
+  return {
+    w: W,
+    h: H,
+    pos: (ref: NodeRef) => {
+      if (ref.kind === 'complaint') return { x: SOURCE_X, y: MID_Y };
+      if (ref.kind === 'mechanism') return { x: MECH_X, y: MID_Y };
+      if (ref.kind === 'practice') return { x: POOL_X, y: MID_Y };
+      if (ref.kind === 'parallel') return { x: PARALLEL_X, y: baseY(idx(ref.id)) };
+      return { x: DEEP_X, y: driftY(baseY(idx(ref.parallelId))) };
+    },
+  };
+}
+
 export default function RiverGeometry({
   session,
   state,
   practiceUnlocked,
+  cue,
   onSelect,
   onArrive,
 }: GeometryProps) {
-  const N = session.parallels.length;
-  // one stream per parallel, spread vertically off the shared source
-  const baseY = (i: number) => (N === 1 ? MID_Y : 130 + (380 / (N - 1)) * i);
-  // mid-stream the braids drift toward each other — cross-tradition serendipity
-  const driftY = (y: number) => y + (MID_Y - y) * 0.42;
+  const baseY = baseYFor(session);
 
   return (
-    <svg viewBox="0 0 1000 640" role="img" aria-label="Braided river session map">
+    <g>
       {/* streams */}
       {state.mechanismRevealed &&
         session.parallels.map((p, i) => {
@@ -50,10 +73,15 @@ export default function RiverGeometry({
               ];
           return (
             <g key={p.id} className="enter">
-              <path className={`stream${rejected ? ' dead' : ''}`} d={smoothPath(pts)} stroke={color} />
+              <path
+                className={`stream${rejected ? ' dead' : ' draw'}`}
+                pathLength={rejected ? undefined : 1}
+                d={smoothPath(pts)}
+                stroke={color}
+              />
               {rejected && (
                 // the rejected stream dries up before the pool — a dead end, marked
-                <g>
+                <g className="decor">
                   <line
                     x1={DEEP_X + 8}
                     y1={driftY(y) - 9}
@@ -82,7 +110,8 @@ export default function RiverGeometry({
       {/* headwater: complaint feeds mechanism */}
       {state.complaintTouched && (
         <line
-          className="edge enter"
+          className="edge draw"
+          pathLength={1}
           x1={SOURCE_X + 34}
           y1={MID_Y}
           x2={MECH_X - 24}
@@ -100,6 +129,7 @@ export default function RiverGeometry({
         color={COMPLAINT_COLOR}
         visited={state.complaintTouched}
         selected={sameNode(state.selected, { kind: 'complaint' })}
+        cue={cue === 'complaint'}
         onClick={() => onSelect({ kind: 'complaint' })}
       />
 
@@ -114,6 +144,7 @@ export default function RiverGeometry({
           color={COMPLAINT_COLOR}
           visited={state.mechanismRevealed}
           selected={sameNode(state.selected, { kind: 'mechanism' })}
+          cue={cue === 'mechanism'}
           onClick={() => onSelect({ kind: 'mechanism' })}
         />
       )}
@@ -172,9 +203,10 @@ export default function RiverGeometry({
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}
+        cue={cue === 'practice'}
         labelPos="below"
         onClick={onArrive}
       />
-    </svg>
+    </g>
   );
 }
