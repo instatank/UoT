@@ -1,14 +1,28 @@
-# PLAN — Truth Unites: geometry sandbox MVP
+# PLAN — Truth Unites: geometry sandbox
+
+Architecture reference. For product decisions and constraints, see CLAUDE.md. For the running build log (what changed, why, and lessons learned), see NOTES.md — this file describes current-state architecture, not build history.
 
 ## Goal
 
-A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice session, renderable in three switchable within-session geometries (bounded radial, braided river, descent strata) on identical data, so AA can feel and compare them. Sandbox for one user; not a consumer app.
+A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice session, renderable in three switchable within-session geometries (bounded radial, braided river, descent strata) on identical data, so AA can feel and compare them. Sandbox for one user; not a consumer app — but built to feel like a real product, not a wireframe, since AA's judgment of the geometries depends on feeling them properly.
 
 ## Architecture
 
 - **Next.js App Router, TypeScript, static JSON, no backend.** Session pages are statically generated from `/data`.
 - **One shared session-state model, three rendering layers.** Geometry components are pure views over the same state + data; switching geometry preserves exploration progress.
-- **SVG for all three maps.** No chart library — layouts are simple enough to compute by hand, and full control keeps the contemplative aesthetic.
+- **SVG for all three maps**, rendered into a shared camera engine (`MapViewport`) rather than laid out flat — see below. No chart library — layouts are simple enough to compute by hand, and full control keeps the contemplative aesthetic.
+- **No new runtime dependencies.** Camera gestures are hand-rolled pointer events + rAF; voice is the browser's Web Speech API; ambience is generated WebAudio. `package.json` still lists only next/react/typescript.
+
+## Map camera (`components/MapViewport.tsx`)
+
+Each geometry no longer renders a flat `<svg>` — it exports pure SVG content plus a `layout()` function (canvas size + a `pos(ref: NodeRef)` lookup), and `MapViewport` owns the camera on top of it:
+
+- Pinch-zoom, drag-pan with momentum glide, mouse-wheel/trackpad zoom, double-tap zoom, and `+`/`◎`/`−` controls.
+- `focusOn(x, y, {k, ms})` animates the camera to center a point — used whenever a node is selected, so the selection glides into the band of screen the detail sheet doesn't cover.
+- `bottomInset` (a ref, not a prop, to avoid re-render churn) tells the camera how many px of the viewport the sheet currently occupies.
+- Reads `prefers-reduced-motion` once and skips animated transitions when set.
+
+Each geometry's `layout()` export (`radialLayout`, `riverLayout`, `descentLayout`) is the single source of truth for "where is node X" — `SessionView` uses it to compute camera targets, so a new geometry only needs to implement `layout()` correctly to get free camera support.
 
 ## Session interaction model (shared across geometries)
 
@@ -20,13 +34,29 @@ Progressive excavation, same in every geometry:
 4. The **practice** terminal is always visible but locked until the mechanism is revealed and ≥1 *accepted* parallel visited. Selecting it triggers **arrival**: an overlay showing the payoff (recognition synthesis), then the practice. Bounded: nothing branches past this.
 5. On arrival, a minimal session record is persisted to `localStorage` (Constellation stub).
 
-State shape: `{ complaintTouched, mechanismRevealed, visitedParallels[], visitedDeepenings[], selected, arrived }`. Selection also drives a detail panel (right column) showing the node's full content — passage, reading, citation, rejection reason.
+State shape: `{ complaintTouched, mechanismRevealed, visitedParallels[], visitedDeepenings[], selected, arrived }` (`lib/state.ts`, unchanged since first build). Selection also drives the detail sheet — see below.
+
+## Detail sheet (`components/NodePanel.tsx` inside `SessionView.tsx`)
+
+- **Desktop (≥769px):** fixed right column, always visible, empty state when nothing selected.
+- **Mobile (≤768px):** a staged bottom sheet with three positions — **peek** (title strip only, map fully visible), **half** (default on selection — map focused above, content below), **full** (content fills the screen; the map dims and scales down slightly behind it — "reading mode"). Drag the grip to move between states (velocity-based snapping on release), tap the grip to toggle half↔full, tap the map background to drop to peek.
+- **Content language: pills + folds, not prose walls.** Every node detail leads with a pill row (kind, lineage color, `≉ rejected`, `▷ listen`). Secondary commentary ("the reading") is collapsed by default behind a `Fold`; the *rejection reason* fold is the one exception and starts open, since curated rejection is the product's moat and should stay foregrounded, not hidden. Practice steps render as numbered cards.
+
+## Voice + ambience (optional, off by default)
+
+- `lib/voice.ts` — `useVoice()` wraps the Web Speech API. `▷ listen` appears on every node detail and on the arrival overlay; it reads the full content of that node, including anything visually collapsed behind a fold, so voice is a genuine low-text path, not a shorter version. Uses a **neutral system reading voice**, deliberately not a persona/character voice — see CLAUDE.md decision 7 (no guru/authority figures).
+- `lib/ambience.ts` — `toggleAmbience()` is a generated WebAudio drone (two soft sine partials a fifth apart, under a slowly-breathing lowpass filter; no samples, no loop points, no rhythm). Toggled by the `♪` icon in the session header. Starts only on user gesture (autoplay-safe) and fades in/out rather than cutting.
+- Both are genuinely optional and start silent — neither is a variable-reward mechanic; see CLAUDE.md decision 6.
 
 ## Geometries
 
-- **Radial** (`RadialGeometry`): complaint at center; mechanism drawn as a thin ring around it (everything routes through mechanism); parallels at mid radius spread by angle, colored by lineage; deepenings further out on the same spoke; outermost dashed circle = practice edge, clickable when unlocked. Depth = literal radius.
-- **River** (`RiverGeometry`): complaint + mechanism at left source; one stream per parallel flowing right, drifting toward neighbors mid-stream; accepted streams reconverge into a single practice pool at right; the rejected stream is dashed and dries up before the pool (dead-end terminator).
-- **Descent** (`DescentGeometry`): horizontal strata bands darkening with depth; complaint at surface, mechanism stratum below, one stratum row per parallel (rejected as an offset pocket), practice at bedrock; a central shaft line ties the dig together.
+- **Radial** (`RadialGeometry` / `radialLayout`): complaint at center; mechanism drawn as a thin ring around it (everything routes through mechanism); parallels at mid radius spread by angle, colored by lineage; deepenings further out on the same spoke; outermost dashed circle = practice edge, clickable when unlocked. Depth = literal radius.
+- **River** (`RiverGeometry` / `riverLayout`): complaint + mechanism at left source; one stream per parallel flowing right, drifting toward neighbors mid-stream; accepted streams reconverge into a single practice pool at right; the rejected stream is dashed and dries up before the pool (dead-end terminator).
+- **Descent** (`DescentGeometry` / `descentLayout`): vertical strata bands darkening with depth; complaint at surface, mechanism stratum below, one stratum row per parallel (rejected as an offset pocket), practice at bedrock; a central shaft line ties the dig together. Has two layouts (desktop-wide vs compact-portrait, chosen via `useCompact()`) — the only geometry that does, because a wide horizontal pit doesn't fit a phone's width the way the other two adapt by panning.
+
+## Motion (all killed by `prefers-reduced-motion`)
+
+The next node in the excavation arc (complaint → mechanism → practice) breathes with a slow cue-ring pulse; visited nodes glow; edges/streams draw themselves in on reveal; the unlocked practice edge slowly rotates its dashes; a faint aurora gradient drifts behind the map; the arrival overlay reveals in stages (eyebrow → payoff → practice → footer). None of this is a progression mechanic — it's atmosphere on top of a session that still only has one exit (arrival). Checked against CLAUDE.md decision 6 before adding.
 
 ## File structure
 
@@ -43,14 +73,18 @@ lib/
   state.ts                     — useSessionState hook (shared state machine)
   constellation.ts             — localStorage stub: save/load session records
   lineage.ts                   — lineage → color map
+  voice.ts                     — Web Speech API wrapper + per-node speech text
+  ambience.ts                  — generated WebAudio drone, toggleable
 components/
-  SessionView.tsx              — client shell: header, switcher, geometry, panel, arrival
-  NodePanel.tsx                — detail panel for selected node
+  MapViewport.tsx              — shared camera: pan/zoom/focus for all geometries
+  SessionView.tsx              — client shell: header, switcher, camera, sheet, arrival
+  NodePanel.tsx                — detail content for selected node (pills + folds)
   ArrivalOverlay.tsx           — payoff → practice → recorded-to-constellation
   geometries/
-    RadialGeometry.tsx
-    RiverGeometry.tsx
-    DescentGeometry.tsx
+    common.tsx                 — MapNode, GeometryProps, MapLayout type, useCompact()
+    RadialGeometry.tsx          (+ radialLayout)
+    RiverGeometry.tsx           (+ riverLayout)
+    DescentGeometry.tsx         (+ descentLayout)
 app/
   layout.tsx, globals.css
   page.tsx                     — session picker (cold start; provisional, flagged)
@@ -62,7 +96,11 @@ app/
 Session: `id, painCategory (fixed 10), surfaceComplaint, complaintBody, mechanism {id, name, provisional, description}, parallels[], payoff, practice {id, name, steps[]}`.
 Parallel: `id, lineage (fixed enum), status: accepted|rejected, title, source {work, author, locus}, passage, reading, deepening? {id, title, body}, rejectionReason?` (required iff rejected). Mechanism IDs are namespaced `mech.*` and marked provisional — the real mechanism taxonomy doesn't exist yet.
 
-## Build order
+## Deployment
+
+Vercel project `uo-t`, connected to this repo's `main` branch — every push to `main` triggers a production build automatically (this is Vercel's git integration, not something this codebase configures). Production: **https://uo-t.vercel.app**. `vercel.json` pins the framework preset to `nextjs` (auto-detection previously came back null and mis-built as a static site). No preview-branch workflow is set up; all shipped work currently lands on `main` directly per AA's review pattern so far — confirm with AA before assuming that's still wanted if this changes.
+
+## Build order (historical — first build; kept for reference)
 
 1. PLAN.md, scaffold (package.json, tsconfig, app shell), `npm install`
 2. Schema doc + three seed sessions
@@ -71,3 +109,5 @@ Parallel: `id, lineage (fixed enum), status: accepted|rejected, title, source {w
 5. Three geometry components
 6. Styling pass (contemplative map: dark, spacious, slow transitions)
 7. `npm run build`, drive it in a browser, screenshot each geometry, fix, commit, push
+
+Subsequent passes (mobile adaptation, then the map-engine/sheet/voice product pass) are logged in NOTES.md, not repeated here.
