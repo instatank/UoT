@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { sessions } from '@/lib/sessions';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
+import { doorsEnabled } from '@/lib/flags';
 import ConstellationNote from '@/components/ConstellationNote';
 
 export default function Home() {
@@ -12,6 +13,17 @@ export default function Home() {
         One session loop — pain, mechanism, parallels, practice — rendered in three switchable
         geometries. Pick a session, then compare radial, river, and descent on identical content.
       </p>
+
+      {doorsEnabled && (
+        <Link href="/door" className="door-entry">
+          <span className="pill gold">new · the Door</span>
+          <span className="door-entry-line">Say it in your own words →</span>
+          <span className="card-sub">
+            The ratified cold start (decision 11): free text or the ten pains, crisis off-ramp
+            included. Behind a flag until Phase 3.
+          </span>
+        </Link>
+      )}
 
       <div className="session-list">
         {sessions.map((s) => {
@@ -49,8 +61,9 @@ export default function Home() {
 
       <div className="home-foot">
         <p>
-          Cold start via picker is provisional — how a pain point gets named at session start is an
-          open problem, not a decision.
+          Cold start is decided now (locked decision 11): the Two Doors + crisis off-ramp, built at{' '}
+          /door behind a flag. This picker remains the sandbox&rsquo;s geometry-comparison entry
+          until Phase 3 makes the Door the front door.
         </p>
         <ConstellationNote />
       </div>
