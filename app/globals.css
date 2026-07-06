@@ -1192,6 +1192,48 @@ ol.steps li::before {
   animation-delay: 1.9s;
 }
 
+.arrival .s6 {
+  animation-delay: 2.3s;
+}
+
+/* the Thread — arrival's minted artifact */
+.thread-stage {
+  margin-top: 6px;
+}
+
+.thread-wrap {
+  margin: 16px 0 14px;
+}
+
+.thread-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  box-shadow: 0 10px 44px rgba(0, 0, 0, 0.45);
+}
+
+.thread-save {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 20px;
+  transition: color 0.3s, border-color 0.3s, opacity 0.3s;
+}
+
+.thread-save:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: rgba(216, 201, 138, 0.5);
+}
+
+.thread-save:disabled {
+  opacity: 0.5;
+}
+
 .arrival .eyebrow {
   color: var(--gold);
 }

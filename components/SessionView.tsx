@@ -273,7 +273,11 @@ export default function SessionView({ session }: { session: SessionData }) {
       </div>
 
       {state.arrived && overlayOpen && (
-        <ArrivalOverlay session={session} onDismiss={() => setOverlayOpen(false)} />
+        <ArrivalOverlay
+          session={session}
+          visited={state.visitedParallels}
+          onDismiss={() => setOverlayOpen(false)}
+        />
       )}
     </div>
   );
