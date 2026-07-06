@@ -25,6 +25,17 @@ body {
   height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* pan/pinch stay native; double-tap-to-zoom delay is dropped on interactives */
+button,
+a,
+svg {
+  touch-action: manipulation;
+}
+
 body {
   background: radial-gradient(120% 90% at 50% 0%, #0d1119 0%, var(--bg) 55%, var(--bg-deep) 100%)
     fixed;
@@ -490,17 +501,188 @@ blockquote.passage {
   border-color: #2b3550;
 }
 
-@media (max-width: 900px) {
-  .session-body {
-    flex-direction: column;
-    overflow-y: auto;
+/* ---------- mobile: portrait phones ---------- */
+/* The panel becomes a bottom sheet; each map keeps a legible scale and pans
+   natively instead of shrinking to fit. */
+
+.sheet-handle,
+.sheet-peek {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .session-shell {
+    height: 100vh;
+    height: 100dvh;
   }
-  .map-area svg {
-    max-height: 70vh;
+
+  .session-header {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 10px 14px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
   }
-  .panel {
+
+  .session-header .back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+  }
+
+  .geo-switch {
     width: 100%;
+  }
+
+  .geo-switch button {
+    flex: 1;
+    min-height: 44px;
+    padding: 10px 0;
+  }
+
+  .session-body {
+    position: relative;
+  }
+
+  .map-area {
+    display: block;
+    padding: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .map-area svg {
+    max-height: none;
+    display: block;
+  }
+
+  /* while the sheet is up, give the map scroll room so any node — practice
+     at bedrock included — can be panned above the sheet and tapped */
+  .session-body.sheet-open .map-area svg {
+    margin-bottom: 58vh;
+    margin-bottom: 58dvh;
+  }
+
+  /* radial: full map at 1:1 label scale; pan the field, selection recenters */
+  .map-area.geo-radial svg {
+    width: 800px;
+    height: 800px;
+  }
+
+  /* river: the flow stays left→right; swipe along the river */
+  .map-area.geo-river svg {
+    width: 1000px;
+    height: 640px;
+  }
+
+  /* descent: portrait-fit strata; the only axis is down */
+  .map-area.geo-descent svg {
+    width: 100%;
+    height: auto;
+  }
+
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 56vh;
+    max-height: 56dvh;
     border-left: none;
-    border-top: 1px solid var(--line-soft);
+    border-top: 1px solid #262f44;
+    border-radius: 16px 16px 0 0;
+    background: rgba(12, 16, 24, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.5);
+    padding: 0 22px calc(30px + env(safe-area-inset-bottom));
+    transform: translateY(104%);
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 10;
+  }
+
+  .panel.open {
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    display: block;
+    width: 100%;
+    padding: 14px 0 16px;
+    position: sticky;
+    top: 0;
+    background: rgba(12, 16, 24, 0.92);
+    z-index: 1;
+  }
+
+  .sheet-handle span {
+    display: block;
+    width: 44px;
+    height: 4px;
+    border-radius: 2px;
+    background: #2b3550;
+    margin: 0 auto;
+  }
+
+  .sheet-peek {
+    display: inline-flex;
+    align-items: center;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 9;
+    min-height: 44px;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 22px;
+    background: rgba(12, 16, 24, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .panel .deeper-btn {
+    min-height: 44px;
+    padding: 10px 22px;
+  }
+
+  .arrival {
+    margin: 12px;
+    padding: 32px 24px calc(26px + env(safe-area-inset-bottom));
+    max-height: 86vh;
+    max-height: 88dvh;
+  }
+
+  .arrival-foot {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .arrival-foot .recorded {
+    flex-basis: 100%;
+  }
+
+  .arrival-foot button,
+  .arrival-foot a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .home {
+    padding: 8vh 20px 10vh;
+    padding-left: calc(20px + env(safe-area-inset-left));
+    padding-right: calc(20px + env(safe-area-inset-right));
+    padding-bottom: calc(10vh + env(safe-area-inset-bottom));
+  }
+
+  .home h1 {
+    font-size: 29px;
   }
 }

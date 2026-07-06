@@ -1,7 +1,24 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { NodeRef, SessionData } from '@/lib/types';
 import type { SessionState } from '@/lib/state';
+
+export const MOBILE_QUERY = '(max-width: 768px)';
+
+// True on phone-width viewports. Initializes false (matches the statically
+// rendered desktop markup), corrects after hydration.
+export function useCompact(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const update = () => setCompact(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return compact;
+}
 
 export interface GeometryProps {
   session: SessionData;
@@ -104,6 +121,10 @@ export function MapNode({
       className={`mnode enter${selected ? ' selected' : ''}${locked ? ' locked' : ''}`}
       onClick={locked ? undefined : onClick}
     >
+      {/* invisible hit area — keeps small nodes at a ≥44px touch target */}
+      {onClick && !locked && (
+        <circle cx={x} cy={y} r={Math.max(r + 10, 26)} fill="transparent" stroke="none" />
+      )}
       {selected && (
         <circle cx={x} cy={y} r={r + 6} fill="none" stroke={color} strokeOpacity={0.5} />
       )}

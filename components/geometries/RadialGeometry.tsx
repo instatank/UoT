@@ -39,7 +39,7 @@ export default function RadialGeometry({
         className={`mnode enter${practiceUnlocked ? '' : ' locked'}`}
         onClick={practiceUnlocked ? onArrive : undefined}
       >
-        <circle cx={CX} cy={CY} r={R_PRACTICE} fill="none" stroke="transparent" strokeWidth={18} />
+        <circle cx={CX} cy={CY} r={R_PRACTICE} fill="none" stroke="transparent" strokeWidth={44} />
         <circle
           cx={CX}
           cy={CY}
