@@ -20,9 +20,11 @@ const INNER = W - PAD * 2;
 const SERIF = "Georgia, 'Iowan Old Style', 'Times New Roman', serif";
 const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-// character budget for a given font size (Georgia ≈ 0.6em average advance —
-// conservative, so lines never overflow the card)
-const chars = (px: number) => Math.floor(INNER / (px * 0.6));
+// character budget for a given font size (Georgia body text averages ≈0.4em
+// per glyph, the sans runs wider; both factors keep headroom for caps-heavy
+// lines without leaving the right half of the card empty)
+const chars = (px: number, family: string = SERIF) =>
+  Math.floor(INNER / (px * (family === SANS ? 0.62 : 0.5)));
 
 const ThreadCard = forwardRef<SVGSVGElement, { data: ThreadData }>(function ThreadCard(
   { data },
@@ -67,7 +69,7 @@ const ThreadCard = forwardRef<SVGSVGElement, { data: ThreadData }>(function Thre
     content: string,
     opts: { size: number; fill: string; family?: string; italic?: boolean; lh: number }
   ) => {
-    for (const line of wrapText(content, chars(opts.size))) {
+    for (const line of wrapText(content, chars(opts.size, opts.family))) {
       text(line, opts);
       y += opts.lh;
     }
@@ -101,8 +103,8 @@ const ThreadCard = forwardRef<SVGSVGElement, { data: ThreadData }>(function Thre
     y += 21;
     block(line.text, { size: 15.5, fill: '#dde3ec', family: SERIF, lh: 23 });
     y += 2;
-    text(line.cite, { size: 10.5, fill: '#596275' });
-    y += 30;
+    block(line.cite, { size: 10.5, fill: '#596275', lh: 16 });
+    y += 14;
   }
 
   divider();

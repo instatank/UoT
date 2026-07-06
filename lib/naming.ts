@@ -46,7 +46,13 @@ export function detectCrisis(text: string): boolean {
 
 function countHits(haystack: string, needles: string[]): number {
   let n = 0;
-  for (const k of needles) if (haystack.includes(k)) n++;
+  for (const k of needles) {
+    // keywords must start at a word boundary but may grow a suffix
+    // ("rehears" → "rehearsing"); plain substring matching false-positives
+    // ("presentation" contains "resent")
+    const re = new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (re.test(haystack)) n++;
+  }
   return n;
 }
 

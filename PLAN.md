@@ -1,6 +1,6 @@
 # PLAN — Truth Unites: geometry sandbox
 
-Architecture reference. For product decisions and constraints, see CLAUDE.md. For the running build log (what changed, why, and lessons learned), see NOTES.md — this file describes current-state architecture, not build history.
+Architecture reference. For product decisions and constraints, see CLAUDE.md; for the product roadmap, PRODUCT.md (ratified 2026-07-06 on §6/§8.1/§8.2/§8.3). For the running build log (what changed, why, and lessons learned), see NOTES.md — this file describes current-state architecture, not build history.
 
 ## Goal
 
@@ -48,6 +48,23 @@ State shape: `{ complaintTouched, mechanismRevealed, visitedParallels[], visited
 - `lib/ambience.ts` — `toggleAmbience()` is a generated WebAudio drone (two soft sine partials a fifth apart, under a slowly-breathing lowpass filter; no samples, no loop points, no rhythm). Toggled by the `♪` icon in the session header. Starts only on user gesture (autoplay-safe) and fades in/out rather than cutting.
 - Both are genuinely optional and start silent — neither is a variable-reward mechanic; see CLAUDE.md decision 6.
 
+## The Door (`/door`, behind a flag) + `/api/naming`
+
+The ratified cold start (locked decision 11), trialed inside the sandbox behind `lib/flags.ts` (`doorsEnabled`: on in dev, `NEXT_PUBLIC_DOORS=1` in prod). Client state machine with four stages: **door** ("Say it" textarea + browse link) → **naming** (2–3 curated recognition-line cards + "none of these") → **browse** (the ten pains; unmapped categories shown honestly as dim rows) → **crisis** (full-screen off-ramp, `components/CrisisOfframp.tsx`).
+
+- `/api/naming` (the product's only server compute): POST free text → `{painCategory, candidateMechanismIds, crisisFlag, via}`. With `ANTHROPIC_API_KEY`: a small-model call with a schema-forced tool whose enums are the taxonomy — output re-validated server-side down to known IDs. Without a key (or on any model failure/timeout): the keyword heuristic in `lib/naming.ts`. **Trust boundary (§9.1): the route returns IDs only; every sentence the user reads is looked up from curated data (`data/naming.ts`).**
+- Crisis detection is layered: local regex floor runs client-side *before any network call* (crisis text ideally never leaves the device), again server-side, and in the model call when a key exists. False positives land on a calm screen with a way back — that cost is accepted.
+- Misses ("none of these" and no-match) log to `localStorage['uot.naming-misses.v1']` as taxonomy feedback; crisis text is never logged.
+- `data/naming.ts` holds sandbox recognition lines + heuristic keywords for the three seed mechanisms — never-migrate draft content, retired when the gauntlet ships real lines.
+
+## The Thread (arrival artifact)
+
+`lib/thread.ts` mints ThreadData from the session + visit log (one cited line per visited lineage, accepted parallels only, first-per-lineage in visit order; convergence = payoff, sentence-capped; practice; date). `components/ThreadCard.tsx` renders it as a 720-wide SVG using literal fonts/colors (no CSS vars — the SVG is serialized standalone for export) with hand-rolled greedy text wrapping. "Save as image" rasterizes to a 2× PNG client-side (SVG → blob → Image → canvas → download). The constellation record already contains everything needed to re-mint a Thread, so no new persistence.
+
+## The Registry (`registry/`)
+
+The future backend source of truth, scaffolded per PRODUCT.md §9.2 (git is the CMS). `registry/schema/REGISTRY.md` is the contract; `npm run registry:check` (`scripts/registry-check.mjs`, no deps) validates it — citations resolve, rejected ⇒ reason, descents reach practice, rights present, admission-rule structure, caps; `-- --self-test` proves the validator against 13 fixture mutations. `registry/drafts/` holds Admission Gauntlet candidates awaiting AA's kill-pass (Anxiety drafted). Taxonomy is empty until the Phase 1 gauntlet runs; sandbox `/data` content never migrates in.
+
 ## Geometries
 
 - **Radial** (`RadialGeometry` / `radialLayout`): complaint at center; mechanism drawn as a thin ring around it (everything routes through mechanism); parallels at mid radius spread by angle, colored by lineage; deepenings further out on the same spoke; outermost dashed circle = practice edge, clickable when unlocked. Depth = literal radius.
@@ -61,10 +78,18 @@ The next node in the excavation arc (complaint → mechanism → practice) breat
 ## File structure
 
 ```
+registry/                      — the Truth Registry scaffold (see its README.md)
+  taxonomy.json                — empty until the Phase 1 gauntlet
+  schema/REGISTRY.md           — field-by-field contract
+  drafts/anxiety-gauntlet.md   — candidates awaiting AA's kill-pass
+  passages/ parallels/ practices/ descents/
+scripts/
+  registry-check.mjs           — npm run registry:check (+ --self-test)
 data/
   SCHEMA.md                    — documented schema (Registry node-shape prototype; deliverable)
+  naming.ts                    — Door recognition lines + heuristic keywords (sandbox, never migrates)
   sessions/
-    anxiety-first-date.json
+    anxiety-first-date.json    (carries the one alternatePractices example)
     anger-reactivity.json
     burnout.json
 lib/
@@ -75,11 +100,17 @@ lib/
   lineage.ts                   — lineage → color map
   voice.ts                     — Web Speech API wrapper + per-node speech text
   ambience.ts                  — generated WebAudio drone, toggleable
+  flags.ts                     — doorsEnabled
+  naming.ts                    — crisis floor, heuristic classifier, miss log (isomorphic)
+  thread.ts                    — mintThread, wrapText, exportSvgAsPng
 components/
   MapViewport.tsx              — shared camera: pan/zoom/focus for all geometries
   SessionView.tsx              — client shell: header, switcher, camera, sheet, arrival
   NodePanel.tsx                — detail content for selected node (pills + folds)
-  ArrivalOverlay.tsx           — payoff → practice → recorded-to-constellation
+  ArrivalOverlay.tsx           — payoff → practice (+ "another way" fold) → the Thread
+  Fold.tsx                     — shared collapse/expand (panel + arrival)
+  ThreadCard.tsx               — the Thread as standalone-exportable SVG
+  CrisisOfframp.tsx            — full-screen resources page
   geometries/
     common.tsx                 — MapNode, GeometryProps, MapLayout type, useCompact()
     RadialGeometry.tsx          (+ radialLayout)
@@ -87,13 +118,15 @@ components/
     DescentGeometry.tsx         (+ descentLayout)
 app/
   layout.tsx, globals.css
-  page.tsx                     — session picker (cold start; provisional, flagged)
+  page.tsx                     — session picker (+ Door entry when flagged on)
+  door/page.tsx                — the Door (flag-gated)
+  api/naming/route.ts          — classification endpoint (the only server compute)
   session/[id]/page.tsx        — statically generated session view
 ```
 
 ## Schema (prototype of Registry node shape — see data/SCHEMA.md for full doc)
 
-Session: `id, painCategory (fixed 10), surfaceComplaint, complaintBody, mechanism {id, name, provisional, description}, parallels[], payoff, practice {id, name, steps[]}`.
+Session: `id, painCategory (fixed 10), surfaceComplaint, complaintBody, mechanism {id, name, provisional, description}, parallels[], payoff, practice {id, name, steps[]}, alternatePractices[]? (≤2, behind arrival's "another way" fold — decision 12)`.
 Parallel: `id, lineage (fixed enum), status: accepted|rejected, title, source {work, author, locus}, passage, reading, deepening? {id, title, body}, rejectionReason?` (required iff rejected). Mechanism IDs are namespaced `mech.*` and marked provisional — the real mechanism taxonomy doesn't exist yet.
 
 ## Deployment
