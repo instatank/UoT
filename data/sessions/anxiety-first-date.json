@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "anxiety-first-date",
+  "painCategory": "Anxiety",
+  "surfaceComplaint": "I have a first date on Friday and I can't stop rehearsing it.",
+  "complaintBody": "It's Tuesday and Friday has already happened forty times in my head — what I'll say, how I'll sit, whether the joke lands. Half of me is looking forward to it; the other half is running a security audit on a person who hasn't shown up yet: me. I'm tired of an evening that hasn't occurred.",
+  "mechanism": {
+    "id": "mech.anticipatory-self-surveillance",
+    "name": "Anticipatory self-surveillance",
+    "provisional": true,
+    "description": "Attention splits into an actor and an auditor. The prediction system treats an uncertain social evaluation as a threat and starts rehearsing it, and the body responds to each rehearsal as if it were the event. The cruelest part is the resource math: the monitoring that is supposed to secure a good impression consumes exactly the attention that would make one."
+  },
+  "parallels": [
+    {
+      "id": "stoic-dichotomy",
+      "lineage": "Stoicism",
+      "status": "accepted",
+      "title": "The auditor guards the wrong door",
+      "source": {
+        "work": "Enchiridion",
+        "author": "Epictetus",
+        "locus": "ch. 1"
+      },
+      "passage": "Some things are within our power, and some are not. Within our power are opinion, impulse, desire, aversion — in a word, whatever is our own doing. Not within our power are body, property, reputation, office — whatever is not our own doing.",
+      "reading": "Her verdict on you is filed, precisely and by name, under 'not yours' — it sits in her nervous system, not your preparation. The rehearsal is your machinery trying to administer territory it doesn't govern. What Epictetus hands back is the one asset the auditor keeps spending: where your attention goes on Friday is entirely within your power.",
+      "deepening": {
+        "id": "stoic-dichotomy-deep",
+        "title": "The lyre-player's tremble",
+        "body": "Epictetus watched this exact case (Discourses 2.13): a citharode sings alone, relaxed and skillful, then trembles on stage. Why? Not because his skill changed — because on stage he wants not only to sing well but to be applauded, and applause lives in other people. Anxiety enters at the precise coordinate where desire attaches to something outside your power. The tremble is a map: it shows you exactly what you've attached to the crowd."
+      }
+    },
+    {
+      "id": "papanca",
+      "lineage": "Buddhism",
+      "status": "accepted",
+      "title": "The mind that multiplies",
+      "source": {
+        "work": "Madhupiṇḍika Sutta",
+        "author": "Majjhima Nikāya",
+        "locus": "MN 18"
+      },
+      "passage": "What one feels, one perceives. What one perceives, one thinks about. What one thinks about, one proliferates. With what one has proliferated as the source, perceptions and notions born of proliferation beset a man with respect to past, present, and future.",
+      "reading": "The Pali word is papañca — proliferation. A flutter in the stomach becomes a thought about Friday becomes a story about how you come across becomes a verdict on your whole romantic future. The sutta's claim is surgical: the flutter isn't the weight. The multiplication is. Forty rehearsals of Friday are one feeling, compounded.",
+      "deepening": {
+        "id": "papanca-deep",
+        "title": "Proliferation needs a protagonist",
+        "body": "Notice what every rehearsal has in common: it stars you. Papañca runs on selfing — the commentary can't multiply without a main character to defend. A raw sensation (warmth in the chest, tightness in the throat) carries no plot and needs no protagonist. This is why the classical instruction is to catch experience at the feeling stage, before the narrator arrives: not to suppress the story, but to stop feeding the casting call."
+      }
+    },
+    {
+      "id": "predictive-billing",
+      "lineage": "Neuroscience/Psychology",
+      "status": "accepted",
+      "title": "The simulator that bills you now",
+      "source": {
+        "work": "Predictive processing & anticipatory anxiety literature",
+        "author": "Grupe & Nitschke; Barrett; Clark",
+        "locus": "e.g. Nat. Rev. Neurosci. 14, 488–501 (2013)",
+        "translationNote": "Empirical frame — a findings summary, not a text."
+      },
+      "passage": "The brain is a prediction machine: it pre-activates responses to expected events rather than waiting for them. Under uncertainty about social evaluation, anticipatory processes recruit the same threat circuitry as the event itself — attention narrows, cortisol rises, working memory is taxed — for outcomes that exist only as simulations.",
+      "reading": "Friday hasn't happened; your amygdala doesn't know that. Each rehearsal is billed at nearly the full metabolic price of the real evening — which is why you're exhausted by an event that doesn't exist. The rehearsal isn't preparation. It's paying, in advance and repeatedly, for one possible Friday out of many.",
+      "deepening": {
+        "id": "predictive-billing-deep",
+        "title": "Why the simulator can't be argued with",
+        "body": "Reassurance ('it'll be fine') fails because the prediction system doesn't take verbal input; it updates on attention and evidence. What does reach it: repeatedly placing attention on present sensory data, which the system reads as 'no threat currently materializing,' and letting the predicted scene stay uninhabited. This is the mechanistic reason attention practices work where self-talk doesn't — you're changing the input stream, not the argument."
+      }
+    },
+    {
+      "id": "sufficient-unto-the-day",
+      "lineage": "Christianity",
+      "status": "accepted",
+      "title": "Tomorrow's bread, eaten today",
+      "source": {
+        "work": "Gospel of Matthew",
+        "locus": "6:27, 6:34"
+      },
+      "passage": "And which of you by being anxious can add a single cubit to his span of life? … Therefore do not be anxious about tomorrow, for tomorrow will be anxious for itself. Sufficient unto the day is the evil thereof.",
+      "reading": "Read this as an engineering note, not a scolding. Two claims: anxiety adds nothing to the outcome (the cubit), and it does its work in a tomorrow that never arrives in the rehearsed form — Friday-as-lived will not be any of the forty Fridays you drafted. The instruction isn't 'feel less.' It's 'stop provisioning for a day you can't reach from here.'",
+      "deepening": {
+        "id": "sufficient-deep",
+        "title": "The day as a ration",
+        "body": "The line sits directly after the prayer for daily bread — bread for this day, pointedly not this week. The structure is a rationing system for attention: each day issues enough presence to live it, and rehearsing Friday spends Friday's ration on Tuesday, which is why you arrive at the actual evening already spent. The tradition's fasting-and-feast rhythm is the same design: consume the day you are in."
+      }
+    },
+    {
+      "id": "premeditatio",
+      "lineage": "Stoicism",
+      "status": "rejected",
+      "title": "Rehearse the worst (premeditatio malorum)",
+      "source": {
+        "work": "Letters to Lucilius",
+        "author": "Seneca",
+        "locus": "Letter 91"
+      },
+      "passage": "The unexpected blow lands heaviest. Let all things be before our eyes — exile, torture, war, shipwreck — rehearsed in the mind, so that fortune finds nothing of ours unprepared.",
+      "reading": "This looks like license for exactly what you're doing: the Stoics themselves prescribing mental rehearsal of bad outcomes. If Seneca recommends imagining shipwreck, surely imagining a bad date is practice, not pathology.",
+      "rejectionReason": "Same imagery, opposite direction of fit. Premeditatio is performed deliberately, briefly, from a settled state, and its target is your attachment — it rehearses losing the outcome in order to retire the demand that things go well. Your rehearsal is involuntary, continuous, and aims to control the outcome — it rehearses winning, defensively, which renews the demand on every pass. One retires the auditor; the other is the auditor working overtime. Doing premeditatio while anxious is just anxiety with a philosophy license."
+    }
+  ],
+  "payoff": "The anxiety is not information about Friday. It is the running cost of a simulator you never agreed to operate — and every frame here catches the same machine at a different point: Epictetus at the attachment (wanting what lives in her nervous system), the sutta at the multiplication (one flutter compounded into forty Fridays), the prediction literature at the billing (real cortisol for imagined evenings), Matthew at the calendar (spending a day you can't reach from here). You don't need a better performance on Friday. You need your attention back before it.",
+  "practice": {
+    "id": "prac.outward-attention",
+    "name": "Outward attention, rationed rehearsal",
+    "durationMinutes": 5,
+    "steps": [
+      "Once, today, on purpose (two minutes): say plainly what is not yours — her verdict, the chemistry, the outcome — and what is yours: where your attention goes. Out loud is better than in your head.",
+      "Between now and Friday, when a rehearsal starts, name it — 'forecasting' — take one slow breath, and place attention on one concrete thing your senses can reach right now. Don't argue with the rehearsal; change the input.",
+      "On the date, the moment you catch the auditor grading you, move your attention to one specific detail of the person across from you — something you'd have to actually look or listen to notice. Curiosity and self-surveillance cannot hold the same attention at the same time. Choose."
+    ]
+  }
+}

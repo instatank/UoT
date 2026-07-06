@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "burnout",
+  "painCategory": "Burnout",
+  "surfaceComplaint": "I used to care about this work. Now I'm just tired all the time — and I can't seem to stop pushing.",
+  "complaintBody": "The work hasn't changed; I have. Tasks that used to light something up now just sit there, and I do them anyway, later and slower and worse. The obvious move is rest, but rest feels like falling behind, which feels like something worse than tiredness. So I push, produce less, and call myself lazy for it. I can't tell anymore if I'm exhausted or broken.",
+  "mechanism": {
+    "id": "mech.worth-output-fusion",
+    "name": "Worth–output fusion",
+    "provisional": true,
+    "description": "Self-worth has contracted until it is denominated entirely in production. Meanwhile the reward system has stopped paying out — effort no longer returns felt meaning — but the identity contract forbids stopping, because under the fusion, not-producing isn't rest, it's nonexistence. So effort persists after the value signal has died, running on compulsion instead of reward, and rest registers as threat. The exhaustion isn't the malfunction. It's the invoice."
+  },
+  "parallels": [
+    {
+      "id": "nishkama-karma",
+      "lineage": "Hindu/Gītā",
+      "status": "accepted",
+      "title": "A right to the work, not the fruits",
+      "source": {
+        "work": "Bhagavad Gītā",
+        "locus": "2.47"
+      },
+      "passage": "You have a right to your actions alone, never to their fruits. Let not the fruits of action be your motive, nor let your attachment be to inaction.",
+      "reading": "The fusion says you are the fruits — the shipped thing, the metric, the standing. Krishna severs it at the root: the fruits were never yours, so a self built out of them is built on leased land. Note the second clause, easy to miss: this is not permission to collapse into inaction. The work remains yours to do. What gets evicted is worth-accounting — the constant conversion of output into a verdict on you.",
+      "deepening": {
+        "id": "nishkama-karma-deep",
+        "title": "Action as offering",
+        "body": "The Gītā's fuller frame (3.9, 3.30) is yajña: act as offering, then let the work leave your hands. An offering is completed at the moment of release — its 'success' is not pending review. This is the exact inversion of the fused state, where nothing you finish is ever finished because everything remains attached, appreciating or depreciating your worth in the background. One question splits the two modes: when you hand something off, is it gone?"
+      }
+    },
+    {
+      "id": "useless-tree",
+      "lineage": "Taoism",
+      "status": "accepted",
+      "title": "The useless tree",
+      "source": {
+        "work": "Zhuangzi",
+        "locus": "ch. 4 (In the World of Men)"
+      },
+      "passage": "The carpenter passed the great gnarled oak without a glance: 'Worthless timber — crooked, loose-grained, good for nothing.' The tree appeared to him in a dream: 'The fruit trees are stripped and broken because they are useful. Their ability makes their life bitter. I have been striving to be useless for a long time. Had I been of use, would I have grown this large?'",
+      "reading": "You have optimized yourself into excellent timber, and you are being harvested accordingly. Zhuangzi's point is not that competence is bad — it's that a life priced entirely by its usefulness gets consumed by its users, with your own consent. Some part of you must remain crooked, loose-grained, of no possible use to anyone's project — including your own. That part is where the aliveness you're missing went.",
+      "deepening": {
+        "id": "useless-tree-deep",
+        "title": "Uselessness as load-bearing",
+        "body": "The tree isn't idle — it grows, shades, persists for centuries. 'Useless' means unpriceable: not convertible into anyone's output. The walk with no destination, the reading that serves no project, the skill deliberately never monetized. The fused system will immediately try to justify these as recovery that improves performance — notice that move; it's the fusion re-pricing the priceless. The practice is having something that is for nothing."
+      }
+    },
+    {
+      "id": "reward-ledger",
+      "lineage": "Neuroscience/Psychology",
+      "status": "accepted",
+      "title": "The ledger is honest, even now",
+      "source": {
+        "work": "Effort-based decision-making & reward blunting literature",
+        "author": "Pizzagalli; Treadway; Maslach",
+        "locus": "e.g. Annu. Rev. Clin. Psychol. 10, 393–423 (2014)",
+        "translationNote": "Empirical frame — a findings summary, not a text."
+      },
+      "passage": "Chronic uncontrollable stress downregulates dopaminergic reward circuitry: reward prediction flattens, effort costs are marked up, and previously reinforcing work stops generating anticipatory drive. The resulting anhedonia and effort-aversion are measurable system responses — the valuation circuit reporting insolvency — not character variables.",
+      "reading": "'I can't make myself care' is not a confession; it's an accurate readout. The circuit whose whole job is to price effort against payoff has run the numbers on your current arrangement and is returning zero — and it has been right before you were willing to be. Pushing harder against a flat reward signal doesn't rebuild the signal. It's spending from an account the ledger already flagged.",
+      "deepening": {
+        "id": "reward-ledger-deep",
+        "title": "Why willpower makes it worse",
+        "body": "The fused response to blunted reward is to substitute discipline for drive — which works, briefly, and deepens the deficit: effort without reward is precisely the input that trains the circuit to mark effort costs up further. Recovery in the literature runs through the opposite inputs: controllability (real choice over some work), and small completable loops where effort visibly lands. The system relearns that effort pays the way it unlearned it — by evidence, not by exhortation."
+      }
+    },
+    {
+      "id": "sabbath",
+      "lineage": "Christianity",
+      "status": "accepted",
+      "title": "Rest as structure, not wage",
+      "source": {
+        "work": "Gospel of Mark; Exodus",
+        "locus": "Mark 2:27; Exodus 20:9–10"
+      },
+      "passage": "The Sabbath was made for man, not man for the Sabbath. — Six days you shall labor, and do all your work, but the seventh day is a Sabbath: you shall not do any work.",
+      "reading": "Notice what the commandment does not say: rest when the work is finished. It can't say that — the work is never finished; that's not a modern condition, it's the human one, and the tradition knew it. So rest is made structural: it arrives on schedule, unearned, regardless of the state of the fields. Under worth–output fusion, rest must be deserved, and is therefore never reachable. Sabbath abolishes the qualifying exam.",
+      "deepening": {
+        "id": "sabbath-deep",
+        "title": "A rest that testifies",
+        "body": "In the Exodus frame the Sabbath is explicitly tied to release from Egypt: slaves don't get a seventh day. Stopping while the work is undone is how a free person behaves — it enacts, weekly, the claim that you are not your production. Which is why it feels so threatening under the fusion: the discomfort you feel at genuinely stopping is not laziness detected. It is the contract, objecting."
+      }
+    },
+    {
+      "id": "marcus-at-dawn",
+      "lineage": "Stoicism",
+      "status": "rejected",
+      "title": "At dawn, rise to the work (Marcus)",
+      "source": {
+        "work": "Meditations",
+        "author": "Marcus Aurelius",
+        "locus": "5.1"
+      },
+      "passage": "At dawn, when you have trouble getting out of bed, tell yourself: I am rising to do the work of a human being. Why am I discontent, if I go to do that for which I was born? Or was I made for this — to huddle under the blankets and keep warm?",
+      "reading": "This looks like the burnout passage — it's about exhaustion, reluctance, and the morning wall, from a man running an empire while chronically ill. Half the internet prescribes it for exactly your Tuesday: discipline over feeling; get up; do the work.",
+      "rejectionReason": "Wrong patient. Marcus is treating torpor before work he still values — the gap between a living 'why' and a sluggish body, which exhortation can bridge. Worth–output fusion is the inverted case: the valuation has collapsed while the compulsion runs fine. You don't have trouble getting out of bed for the work; you have trouble stopping. Prescribing 'rise and do the work of a human being' to a fused system hands the taskmaster a Stoic seal — it strengthens the exact contract that's burning you down. The Meditations would apply after the fusion is severed, when there's a felt 'why' to be roused toward. Not before."
+    }
+  ],
+  "payoff": "You are not failing to care. The part of you that prices effort has stopped being paid, and the part that owns your worth won't let you stop working — that pincer is the whole condition. The Gītā cuts the fusion (the fruits were never yours to be made of), Zhuangzi de-prices you (keep something unharvestable), the Sabbath makes rest structural instead of earned (the exam is abolished), and the reward literature certifies the fatigue as data, not character. The tiredness was never the problem. The contract was.",
+  "practice": {
+    "id": "prac.one-surrendered-block",
+    "name": "One surrendered block",
+    "durationMinutes": 25,
+    "steps": [
+      "Pick one real task for tomorrow — mid-sized, not the scariest thing on the list.",
+      "Before starting, say what the action is worth apart from its results — one sentence, out loud: 'This is worth doing regardless of what it produces or who notices.' If you can't say it honestly, pick a different task; that inability is information.",
+      "Work on it for 25 minutes with everything that measures closed: no metrics, no inbox, no glancing at how it's landing.",
+      "When the timer ends, stop — mid-momentum, mid-sentence if necessary. Stopping while it's unfinished is not the interruption of the practice. It is the practice.",
+      "Don't evaluate the block afterward. Handed off, it's gone."
+    ]
+  }
+}

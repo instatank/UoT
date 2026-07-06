@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "id": "anger-reactivity",
+  "painCategory": "Anger and Reactivity",
+  "surfaceComplaint": "One comment in a meeting and I was gone — and I replayed it all night.",
+  "complaintBody": "It was one sentence, maybe four seconds long, and it flipped me like a switch. I kept it together in the room, mostly. But I ran the tape all evening — what he said, what I should have said, what it says about how they see me. By midnight I was angrier than I'd been at 2pm. At the comment, still.",
+  "mechanism": {
+    "id": "mech.assent-replay-amplification",
+    "name": "Assent–replay amplification",
+    "provisional": true,
+    "description": "The flash is biology; the fire is narrative. A stimulus gets appraised as insult — a story about intent and status — and the body arms in response to the story, not the sound. Physiological anger decays on its own within minutes, so lasting anger requires refueling: each replay re-runs the appraisal, which re-triggers the physiology, which the story then cites as evidence of how serious the insult was. The loop bills itself as processing. It is combustion."
+  },
+  "parallels": [
+    {
+      "id": "first-movements",
+      "lineage": "Stoicism",
+      "status": "accepted",
+      "title": "The flash is not the anger",
+      "source": {
+        "work": "De Ira (On Anger)",
+        "author": "Seneca",
+        "locus": "II.3–4"
+      },
+      "passage": "These first agitations are involuntary — a shudder at cold water, a flush at an insult — and reason cannot prevent them. Anger proper is not moved except where the mind has assented: it judged itself injured, desired revenge, and approved both. The first movement we cannot avoid; the second is ours.",
+      "reading": "Seneca splits your afternoon into two events you've been treating as one. The heat at second four — involuntary, blameless, already over. The anger that lasted until midnight required your signature: the judgment 'that was an injury and it matters.' You can't refuse the flush. The case you built all evening, you filed yourself.",
+      "deepening": {
+        "id": "first-movements-deep",
+        "title": "Where the signature happens",
+        "body": "The Stoics located freedom in a gap most people never see: between the impression ('he insulted me') and the assent ('...and it is true, and it matters, and it demands response'). Training doesn't widen the gap — it teaches you to notice it exists. Seneca's practical corollary is blunt: the greatest remedy for anger is delay. Not because time heals, but because assent withheld for even a minute often finds nothing left worth signing."
+      }
+    },
+    {
+      "id": "second-arrow",
+      "lineage": "Buddhism",
+      "status": "accepted",
+      "title": "The second arrow",
+      "source": {
+        "work": "Sallatha Sutta",
+        "author": "Saṃyutta Nikāya",
+        "locus": "SN 36.6"
+      },
+      "passage": "When an untrained person is touched by a painful feeling, he sorrows and laments — it is as if a man were pierced by an arrow and, right afterward, pierced by a second arrow, so that he feels the pains of two arrows.",
+      "reading": "The comment was the first arrow: four seconds, one wound, done. The evening's replay was the second arrow — and the third, and the fortieth — each fired by the same hand: yours. The sutta's precision matters here: it never says the first arrow doesn't hurt or wasn't real. It says the multiplication of the wound is self-administered, and optional.",
+      "deepening": {
+        "id": "second-arrow-deep",
+        "title": "Why the hand keeps firing",
+        "body": "The replay isn't malfunction; it's the mind trying to make the first arrow not have happened — re-running the scene with better comebacks, auditing what it means about your standing. Each pass promises resolution and delivers re-injury. The trained response isn't stoic numbness: feel the first arrow completely, as body-pain rather than story. What is fully felt at the feeling level has nothing left to prosecute."
+      }
+    },
+    {
+      "id": "ninety-second-arc",
+      "lineage": "Neuroscience/Psychology",
+      "status": "accepted",
+      "title": "The fire needs refueling",
+      "source": {
+        "work": "Affective chronometry & anger rumination studies",
+        "author": "Ray, Wilhelm & Gross; Bushman; J. B. Taylor",
+        "locus": "e.g. J. Pers. Soc. Psychol. 94, 133–145 (2008)",
+        "translationNote": "Empirical frame — a findings summary, not a text."
+      },
+      "passage": "The autonomic surge of anger — adrenaline, heart rate, blood pressure — is metabolically brief, flushing through in seconds to a few minutes. Sustained anger requires cognitive re-triggering: rumination reliably prolongs and re-elevates cardiovascular response, while distraction or somatic attention lets it decay on schedule.",
+      "reading": "Chemically, your 2pm anger was over by roughly 2:02. Everything after was manufactured on site: each replay re-fired the circuit, and the re-fired heat felt like proof the comment was still burning you. It wasn't. You were. This isn't a metaphor agreeing with Seneca — it's the same mechanism, measured.",
+      "deepening": {
+        "id": "ninety-second-arc-deep",
+        "title": "The replay disguised as work",
+        "body": "Rumination survives because it impersonates problem-solving — it feels like preparing, like standing up for yourself, like due diligence on what the comment meant. The experimental literature is unkind to this: angry rumination degrades subsequent decision quality and increases aggression, while brief somatic attention (tracking the sensation until it falls) preserves the option of an actual response. The tell is simple: problem-solving converges on an action. The replay just loops."
+      }
+    },
+    {
+      "id": "empty-boat",
+      "lineage": "Taoism",
+      "status": "accepted",
+      "title": "The empty boat",
+      "source": {
+        "work": "Zhuangzi",
+        "locus": "ch. 20 (Mountain Tree)"
+      },
+      "passage": "If a man is crossing a river and an empty boat collides with his skiff, even a hot-tempered man will not be angry. But if there is someone in the boat, he will shout at him to steer clear — and if the shout is not heard, he will shout again, and curse. Before, no anger; now, anger — because before the boat was empty, and now it is occupied.",
+      "reading": "Same collision, same wet clothes — the only variable is whether the story has an author in it. Your anger needs the comment to have a captain: someone who meant it, aimed it, and thereby said something about your standing. Zhuangzi's move isn't to excuse the man in the boat. It's to show that the anger was never about the collision. It was about the occupancy.",
+      "deepening": {
+        "id": "empty-boat-deep",
+        "title": "Emptying without excusing",
+        "body": "The empty boat is often misread as 'pretend people don't intend things.' Zhuangzi is more precise: most collisions are mostly empty — the comment was fathered by the meeting's pressure, the speaker's own fear, habits older than your acquaintance. Occupancy is a spectrum, and your appraisal system rounds it up to 'fully manned and aiming at me.' You can hold someone responsible for steering badly without granting the collision a personal message. Accountability survives the emptying; the midnight replay does not."
+      }
+    },
+    {
+      "id": "catharsis",
+      "lineage": "Neuroscience/Psychology",
+      "status": "rejected",
+      "title": "Vent it out (the hydraulic model)",
+      "source": {
+        "work": "Catharsis hypothesis, psychodynamic tradition",
+        "author": "after Freud & Breuer",
+        "translationNote": "Empirical frame — included as a near-parallel from the psychology lineage."
+      },
+      "passage": "Anger accumulates in the psyche like pressure in a closed vessel; unexpressed, it leaks out as symptoms or explodes. Discharging it — venting, punching a pillow, saying it all — releases the pressure and restores equilibrium.",
+      "reading": "This looks like it belongs beside the others: it's from the empirical lineage, it takes the anger seriously, and it hands you something to do tonight. It even resembles the second-arrow teaching — deal with the feeling directly instead of suppressing it.",
+      "rejectionReason": "The hydraulic metaphor gets the mechanism exactly backwards, and the experiments show it: venting is rehearsal, not release. Expressing the appraisal re-runs the appraisal — Bushman's studies found venting increases subsequent anger and aggression versus doing nothing at all. There is no vessel and no pressure; there is a loop, and venting is the loop performed at higher volume. The genuine parallels all interrupt the appraisal–replay circuit. This one dresses the circuit up as therapy. Its presence here is the point of this whole exercise: near-misses that feel truest are the ones most worth catching."
+    }
+  ],
+  "payoff": "The comment lasted four seconds. Everything after was self-administered — and every frame here catches the loop at a different joint: Seneca at the signature (the judgment 'this was an injury' is yours to withhold), the sutta at the arithmetic (arrows two through forty came from your hand), the cardiovascular data at the fuel line (the fire was chemically out by 2:02 and you re-lit it hourly), Zhuangzi at the story's casting (the anger needs the boat occupied). The replay was never processing. It was the mechanism, wearing the costume of justice.",
+  "practice": {
+    "id": "prac.ninety-seconds-no-narration",
+    "name": "Ninety seconds, no narration",
+    "durationMinutes": 2,
+    "steps": [
+      "Next flash — in the room, in traffic, on a call — say nothing yet. Not suppression: scheduling. The response will be better drafted with the fire out.",
+      "Find the anger in your body and stay there: heat where, tightness where, pulse where. Track it like weather. It will crest and start falling on its own within a couple of minutes — your only job is not to refuel it.",
+      "Each time the narrator restarts ('he shouldn't have—', 'what this means is—'), don't argue with it. Return to the body sensation. Story is fuel; sensation is not.",
+      "When the arc has passed, decide what the situation actually needs — a boundary, a correction, a shrug — and do that. Response is allowed. Replay is not required for it."
+    ]
+  }
+}
