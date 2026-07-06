@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { SessionData } from '@/lib/types';
 import { arrivalSpeech, useVoice, voiceSupported } from '@/lib/voice';
+import Fold from './Fold';
 
 export default function ArrivalOverlay({
   session,
@@ -47,6 +48,23 @@ export default function ArrivalOverlay({
               <li key={i}>{s}</li>
             ))}
           </ol>
+          {/* exactly one practice at arrival; alternates stay behind a closed
+              fold — a landing, not a menu (locked decision 12) */}
+          {(session.alternatePractices?.length ?? 0) > 0 && (
+            <Fold label="another way">
+              {session.alternatePractices!.slice(0, 2).map((alt) => (
+                <div key={alt.id} className="alt-practice">
+                  <h4>{alt.name}</h4>
+                  {alt.durationMinutes && <p className="duration">~{alt.durationMinutes} minutes</p>}
+                  <ol>
+                    {alt.steps.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </Fold>
+          )}
         </div>
         <div className="arrival-foot stage s5">
           <span className="recorded">Recorded to the constellation.</span>

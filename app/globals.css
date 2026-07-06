@@ -1253,6 +1253,25 @@ ol.steps li::before {
   color: var(--gold);
 }
 
+/* alternate practices behind arrival's "another way" fold (decision 12) */
+.alt-practice h4 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 17px;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+
+.alt-practice .duration {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.alt-practice + .alt-practice {
+  margin-top: 18px;
+}
+
 .arrival-foot {
   margin-top: 30px;
   display: flex;

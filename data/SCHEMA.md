@@ -20,7 +20,8 @@ One JSON file per session in `data/sessions/`. Types are enforced in
 | `mechanism` | Mechanism | the named psychological mechanism — the routing key of the whole system |
 | `parallels` | Parallel[] | ≥3 accepted from ≥3 distinct lineages, one of which must be `Neuroscience/Psychology`; ≥1 with `status: "rejected"` |
 | `payoff` | string | the recognition synthesis — what the parallels jointly reveal; shown at arrival, before practice |
-| `practice` | Practice | required. Every session terminates here; no geometry may omit it |
+| `practice` | Practice | required. Every session terminates here; no geometry may omit it. This is **the default** — arrival presents exactly this one |
+| `alternatePractices` | Practice[]? | ≤2, shown only behind arrival's closed *"another way"* fold — a landing, not a menu (locked decision 12: mechanism→practice is 1:many in data, one practice at arrival in experience) |
 
 ## Mechanism
 

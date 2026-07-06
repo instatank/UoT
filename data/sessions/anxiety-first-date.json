@@ -108,5 +108,18 @@
       "Between now and Friday, when a rehearsal starts, name it — 'forecasting' — take one slow breath, and place attention on one concrete thing your senses can reach right now. Don't argue with the rehearsal; change the input.",
       "On the date, the moment you catch the auditor grading you, move your attention to one specific detail of the person across from you — something you'd have to actually look or listen to notice. Curiosity and self-surveillance cannot hold the same attention at the same time. Choose."
     ]
-  }
+  },
+  "alternatePractices": [
+    {
+      "id": "prac.worry-window",
+      "name": "The worry window",
+      "durationMinutes": 15,
+      "steps": [
+        "Book a fifteen-minute worry appointment for tomorrow — same time daily works best, and not within two hours of bed.",
+        "Until then, when a rehearsal starts, write it down in one line — a ticket, not an essay — and tell it: you have an appointment.",
+        "Keep the appointment. Sit down and worry deliberately through the whole list for the full fifteen minutes, nothing else. Most tickets will look expired on arrival; notice that.",
+        "When time is up, stand up. New rehearsals get tickets for tomorrow's window."
+      ]
+    }
+  ]
 }
