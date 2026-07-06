@@ -2,6 +2,8 @@
 
 **Status: proposal, drafted 2026-07-06.** For AA to ratify, amend, or strike section by section. It inherits every locked decision in CLAUDE.md and does not re-litigate them; where it resolves one of the three open problems, the resolution is marked **PROPOSAL** and needs explicit ratification before it becomes a locked decision. Once ratified, fold the verdicts into CLAUDE.md and treat this file as the product roadmap.
 
+**Ratification record — 2026-07-06.** AA ratified **§6 (geometry homes), §8.1 (Two Doors + crisis off-ramp), §8.2 (practice granularity), §8.3 (Admission Gauntlet)** as written ("my response to proposals 6, 8.1, 8.2, 8.3 is yes"). These are folded into CLAUDE.md as locked decisions 10–13; this file is now the product roadmap. Still proposal-status until separately ruled on: the phase gates (§10) and the business-model sketch (§12).
+
 This plan also absorbs the original "content engine" concept (the Pain → Parallels → Payoff diagram with social channels). That diagram survives — but content becomes a *compiled output* of the product's data, not a separate track. One source of truth, several surfaces. That's the noise-removal move.
 
 ---
@@ -118,7 +120,7 @@ The user picks the one that stings. **The pick is the naming.** Nothing is told 
 
 ## 6. Where the three geometries land
 
-The sandbox's question — which geometry wins — resolves not by picking one and deleting two, but by each finding its natural home. **PROPOSAL, pending AA feeling all three on a phone:**
+The sandbox's question — which geometry wins — resolves not by picking one and deleting two, but by each finding its natural home. **RATIFIED (AA, 2026-07-06):**
 
 - **Descent strata → the session spine.** Already locked as the session geometry (decision 3); the strata rendering is its most literal, most legible expression, and the only one with a true portrait-native layout. The Descent *is* the product's core screen.
 - **Bounded radial → the Constellation.** A star-field of visited mechanisms radiating by pain category is exactly what the radial engine already draws. The cross-session memory view reuses `radialLayout` + `MapViewport` nearly wholesale. The radial map was never the session — it was always the sky above it.
@@ -163,7 +165,7 @@ Keep the neutral system voice and generated drone exactly as designed (decisions
 
 ---
 
-## 8. The three open problems, resolved (PROPOSALS)
+## 8. The three open problems, resolved (RATIFIED — AA, 2026-07-06)
 
 ### 8.1 Cold start → the Two Doors + crisis off-ramp
 As specced in §5.1–5.2. The LLM's only job is mapping free text → `{painCategory, candidateMechanismIds[2–3], crisisFlag}` — a classification into the fixed taxonomy, never generation. "None of these" is always present and falls back to browsing, and every miss is logged (anonymously, locally at first) as taxonomy feedback: repeated misses in a category = missing mechanism.
@@ -248,7 +250,7 @@ Phases gate on **exit criteria, not dates** — a solo founder's calendar is wea
 
 **Phase 0 — Decide (this week).**
 AA reads this plan and rules on: the PROPOSALS (§6 geometry homes, §8.1 doors, §8.2 practice, §8.3 gauntlet), and the phase gates below. Fold verdicts into CLAUDE.md.
-*Exit: every PROPOSAL marked ratified / amended / rejected.*
+*Exit: every PROPOSAL marked ratified / amended / rejected.* **Done 2026-07-06 for §6/§8.1/§8.2/§8.3; the phase gates themselves remain unruled.**
 
 **Phase 1 — The Taxonomy (2–4 weeks of curation sessions).**
 Run the Admission Gauntlet across all 10 categories. Deliverables: `registry/taxonomy.json` v0.1 (30–45 mechanisms, all provisional), recognition lines for each, Tensions ledger started, attestation pointers for Phase 2 to verify.
@@ -327,8 +329,8 @@ Each refusal traces to a locked decision or to the §9.1 trust boundary.
 
 ## 15. Immediate next actions
 
-1. **AA:** rule on the PROPOSALS (§6, §8.1, §8.2, §8.3) — a yes/no/amend per item is enough; verdicts get folded into CLAUDE.md.
-2. **AA + Claude, first working session of Phase 1:** run the Admission Gauntlet on **Anxiety** end-to-end (candidates → recognition test → gauntlet → 3–5 admitted mechanisms) to calibrate the process before sweeping all 10 categories.
-3. **Claude, buildable immediately after ratification:** `registry/` scaffold + `registry:check`, the Two Doors + Naming flow behind a flag, and the Thread card renderer — in that order.
+1. ~~**AA:** rule on the PROPOSALS (§6, §8.1, §8.2, §8.3)~~ — **done 2026-07-06, all four ratified;** verdicts folded into CLAUDE.md.
+2. **AA + Claude, first working session of Phase 1:** run the Admission Gauntlet on **Anxiety** end-to-end (candidates → recognition test → gauntlet → 3–5 admitted mechanisms) to calibrate the process before sweeping all 10 categories. *Claude's candidate draft is ready in `registry/drafts/anxiety-gauntlet.md` — AA's kill-pass is the next move.*
+3. **Claude, buildable immediately after ratification:** `registry/` scaffold + `registry:check`, the Two Doors + Naming flow behind a flag, and the Thread card renderer — in that order. *Built 2026-07-06 on this branch; see NOTES.md for the build log.*
 
 The sandbox proved the session can feel alive. The taxonomy makes it true. The Registry makes it last. And the mission stays what it always was: show people — one solved Tuesday at a time — that we were never as divided as we were told.

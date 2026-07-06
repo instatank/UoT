@@ -21,6 +21,10 @@ Backend source of truth (future): the **Truth Registry** — a curated database 
 7. **No personified guru/avatar/authority figures** on any surface. Contradicts the mechanism-first thesis (reintroduces authority-by-person). Symbolic/atmospheric imagery only. (The optional voice-narration feature uses a neutral system reading voice, not a character/persona voice — this was a deliberate choice to stay compliant with this decision, not an oversight. If AA wants a "real" voice product later, that's a content/product decision to revisit explicitly, not a default to slide into.)
 8. **Aesthetic: contemplative map.** Dark, spacious, unhurried. Not a dashboard, not a game.
 9. **Practice is not optional.** The framework ends in Practice; every session dataset and every geometry must terminate there, even if MVP practice content is thin.
+10. **Geometry homes (ratified 2026-07-06, PRODUCT.md §6).** The three geometries don't compete — each has a home: **Descent strata = the session spine**, **bounded radial = the Constellation** (cross-session star-field), **braided river = the Convergence stage and the public Atlas graphic**. Nothing built gets deleted; the sandbox is the component library of the real product. The in-product geometry switcher dies in Phase 3 but survives at a `/lab` URL.
+11. **Cold start = the Two Doors + crisis off-ramp (ratified 2026-07-06, PRODUCT.md §8.1).** Way in #1: "Say it" — one quiet free-text box, the user's own words. Way in #2: the ten pains as a browse list. The runtime LLM's only job is classification into the fixed taxonomy — `{painCategory, candidateMechanismIds[2–3], crisisFlag}` — never generation (trust boundary, PRODUCT.md §9.1: *the LLM shapes the journey; only the Registry speaks*). "None of these" is always present and falls back to browsing; every miss is logged (anonymously, locally at first) as taxonomy feedback. The **crisis off-ramp ships day one of intake** — acute-danger signals bypass the Descent and land on a calm full-screen resources page. The Door never asks who you are or what you believe.
+12. **Practice granularity (ratified 2026-07-06, PRODUCT.md §8.2).** Data: mechanism → practices is **1:many** in the Registry. Experience: arrival presents **exactly one** default practice with a closed *"another way"* fold holding 1–2 alternates — never a menu at the moment of surrender. Which practice is default is editorial at first, Echo-informed later.
+13. **Mechanism taxonomy via the Admission Gauntlet (ratified 2026-07-06, PRODUCT.md §8.3).** A mechanism earns a slot only if: ≥3 independent lineages attest it (with candidate passages), ≥1 empirical frame exists, it names a *moving part* not a theme, and it stings in first person (2–3 recognition lines AA feels somatically). Naming: plain modern English, ≤6 words, no Sanskrit/Greek/Pali/Latin, no DSM borrowings. Structure: two levels — 10 pain categories → 3–6 mechanisms each; 30–45 target in v0.1, hard cap 60; many-to-many allowed but flagged at 4+ categories. Everything ships `provisional: true`, hardened only by Naming hit-rates. Tensions (genuine cross-tradition disagreements) are recorded from day one.
 
 ## Current MVP scope (architecture sandbox)
 
@@ -41,11 +45,12 @@ Shared session state and data model; only the rendering layer varies. Geometry s
 - 9 lineage families in the broader system; MVP seed can use: Stoicism, Buddhism, Hindu/Gītā, Christianity, Sufism, Taoism, neuroscience/psychology.
 - **Sandbox content is NOT Registry content.** Seed JSON here is generated for geometry testing and has not passed Tier 1 translation / rejected-parallel discipline. Never migrate it into the Truth Registry.
 
-## Known open problems (unsolved, don't pretend otherwise)
+## Open problems — status after the 2026-07-06 ratification
 
-- **Cold start:** how the user's pain point gets named at session start (free text? category picker? guided intake?). MVP can use a simple picker; flag that this is provisional.
-- **Practice granularity:** single mandatory practice per session vs small menu at the boundary — undecided; affects whether mechanism→practice maps 1:1 or 1:many.
-- **Mechanism taxonomy** — the shared spine under retrieval, personalization, and Constellation — does not exist yet. It is the critical next artifact after this sandbox. Don't invent one casually; the seed sessions may name mechanisms ad hoc but mark them as provisional.
+The three long-standing open problems are **resolved as decisions** (locked decisions 11–13 above; detail in PRODUCT.md §8, which is now the product roadmap). What remains genuinely open:
+
+- **The taxonomy artifact itself does not exist yet.** The Admission Gauntlet (decision 13) is the locked *process*; the content is Phase 1 work requiring AA's kill-pass. Candidate drafts live in `registry/drafts/` — they are drafts, not admitted mechanisms, until AA runs the recognition test on himself. Seed-session mechanism IDs remain ad hoc and provisional.
+- **Phase gates and business model** (PRODUCT.md §10, §12) have not been ruled on — still proposals.
 
 ## How to work with AA
 
