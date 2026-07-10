@@ -9,7 +9,17 @@
 // and drives target states through the public API. prefers-reduced-motion
 // swaps every flight animation for an instant cut.
 
-import { paintWorld, glowSprite, rgba, type WorldKind } from './worlds';
+import {
+  beamSprite,
+  glowSprite,
+  hexRgb,
+  jitter,
+  nebulaSprite,
+  paintWorld,
+  rgba,
+  skySprite,
+  type WorldKind,
+} from './worlds';
 
 export type TargetKind = 'beacon' | 'sun' | 'world' | 'gate';
 
@@ -142,6 +152,12 @@ export class VoyageEngine {
   // scene dressing
   private stars: Star[] = [];
   private dust: V3[] = [];
+  // the atmosphere pass: far nebulae fixed on the sky sphere, lineage-hued
+  // haze anchored near each world, and cached backdrop/dust tint strings for
+  // the near-world skybox (fillStyle strings are cheap but not free per frame)
+  private nebulae: { p: V3; size: number; sprite: HTMLCanvasElement }[] = [];
+  private haze: { tg: VoyageTarget; k: number; p: V3; size: number; sprite: HTMLCanvasElement }[] = [];
+  private tintCache = new Map<string, string>();
   private gateFlare = 0; // 1 when the gate just ignited, decays
   private wasLocked = true;
 
@@ -192,6 +208,7 @@ export class VoyageEngine {
 
   start(targets: VoyageTarget[], camPos: [number, number, number], lookAt: [number, number, number]): void {
     this.targets = targets;
+    this.seedHaze();
     this.pos = v3(...camPos);
     this.lookToward(v3(...lookAt));
     this.resize();
@@ -611,9 +628,10 @@ export class VoyageEngine {
     const t = (now - this.t0) / 1000;
 
     // adaptive quality: if frames sag hard, drop resolution (the real cost)
-    // and thin the sky, once
+    // and thin the sky, once. The first seconds are exempt — first paints and
+    // JIT warm-up read as sag and would permanently degrade the sky.
     this.frameEma = this.frameEma * 0.95 + (dt * 1000) * 0.05;
-    if (this.frameEma > 26 && this.quality === 1) {
+    if (this.frameEma > 26 && this.quality === 1 && now - this.t0 > 3000) {
       this.quality = 0.5;
       this.stars = this.stars.filter((_, i) => i % 2 === 0);
       this.dust = this.dust.filter((_, i) => i % 2 === 0);
@@ -817,14 +835,113 @@ export class VoyageEngine {
     this.dust = Array.from({ length: DUST_COUNT }, () =>
       v3((Math.random() * 2 - 1) * 750, (Math.random() * 2 - 1) * 600, (Math.random() * 2 - 1) * 750)
     );
+    // far nebulae — cool gauze fixed on the sky sphere, what the void is made of
+    const hues = ['#5a6e94', '#6d5f8e', '#4f7a78', '#77704f'];
+    this.nebulae = hues.map((hue, i) => {
+      const u = (Math.random() * 2 - 1) * 0.72; // keep clear of the poles
+      const ph = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      return {
+        p: v3(Math.cos(ph) * s * SKY_R * 0.98, u * SKY_R * 0.98, Math.sin(ph) * s * SKY_R * 0.98),
+        size: SKY_R * (0.6 + Math.random() * 0.4),
+        sprite: nebulaSprite(hue, 3 + i * 17),
+      };
+    });
+  }
+
+  /** Lineage-hued nebula wisps anchored near each world — the air of that
+   * tradition, visible long before you land. Deterministic per world id. */
+  private seedHaze(): void {
+    this.haze = [];
+    for (const tg of this.targets) {
+      if (tg.kind !== 'world') continue;
+      const seed = tg.id.length * 7 + tg.id.charCodeAt(0);
+      for (let k = 0; k < 3; k++) {
+        this.haze.push({
+          tg,
+          k,
+          p: v3(
+            tg.pos[0] + (jitter(seed, k * 3 + 1) - 0.5) * tg.r * 9,
+            tg.pos[1] + (jitter(seed, k * 3 + 2) - 0.5) * tg.r * 5,
+            tg.pos[2] + (jitter(seed, k * 3 + 3) - 0.5) * tg.r * 9
+          ),
+          size: tg.r * (6 + jitter(seed, k + 30) * 5),
+          sprite: nebulaSprite(tg.color, seed + k * 11),
+        });
+      }
+    }
+  }
+
+  /** The world whose air the camera is currently inside — nearest surfaced
+   * world weighted by distance; drives the per-lineage skybox. */
+  private skyProximity(): { tg: VoyageTarget; w: number } | null {
+    let best: VoyageTarget | null = null;
+    let bw = 0;
+    for (const tg of this.targets) {
+      if (tg.kind !== 'world' || !tg.present || tg.dim) continue;
+      const wgt =
+        1 -
+        Math.hypot(tg.pos[0] - this.pos.x, tg.pos[1] - this.pos.y, tg.pos[2] - this.pos.z) /
+          (tg.r * 11);
+      if (wgt > bw) {
+        bw = wgt;
+        best = tg;
+      }
+    }
+    if (!best || bw <= 0.02) return null;
+    return { tg: best, w: easeInOut(clamp(bw, 0, 1)) };
+  }
+
+  /** Blend a base rgb toward a hex color by k — cached and quantized so the
+   * render loop reuses strings instead of minting one per frame. */
+  private blendTint(baseR: number, baseG: number, baseB: number, color: string, k: number): string {
+    const q = Math.round(clamp(k, 0, 1) * 24);
+    const key = `${baseR},${color},${q}`;
+    let s = this.tintCache.get(key);
+    if (!s) {
+      const [r, g, b] = hexRgb(color);
+      const u = q / 24;
+      s = `rgb(${Math.round(baseR + (r - baseR) * u)},${Math.round(baseG + (g - baseG) * u)},${Math.round(baseB + (b - baseB) * u)})`;
+      this.tintCache.set(key, s);
+    }
+    return s;
   }
 
   private render(t: number): void {
     const { ctx, w, h } = this;
     this.updateTrig();
-    // deep space backdrop
-    ctx.fillStyle = '#04060b';
+    // world/atmosphere time — frozen under reduced motion so nothing turns
+    const wt = this.reducedMotion ? 0 : t;
+    // the skybox: approaching a world, its lineage's air pours into the sky
+    const sky = this.skyProximity();
+
+    // deep space backdrop, tinted toward the near world's hue
+    ctx.fillStyle = sky ? this.blendTint(4, 6, 11, sky.tg.color, sky.w * 0.16) : '#04060b';
     ctx.fillRect(0, 0, w, h);
+
+    // far nebulae — fixed on the sky sphere, behind everything
+    for (let ni = 0; ni < this.nebulae.length; ni++) {
+      if (this.quality < 1 && ni % 2 === 1) continue; // thinned sky keeps half
+      const nb = this.nebulae[ni];
+      const p = this.projectScratch(nb.p.x, nb.p.y, nb.p.z);
+      if (!p) continue;
+      const size = nb.size * p.scale;
+      if (p.x < -size / 2 || p.x > w + size / 2 || p.y < -size / 2 || p.y > h + size / 2) continue;
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(nb.sprite, p.x - size / 2, p.y - size / 2, size, size);
+    }
+    ctx.globalAlpha = 1;
+
+    // the near world's glow floods the sky before the stars come through
+    if (sky) {
+      const sp = this.project(v3(...sky.tg.pos));
+      if (sp) {
+        const size = Math.max(w, h) * (1.5 + sky.w * 1.2);
+        ctx.globalAlpha = sky.w * 0.55;
+        ctx.drawImage(skySprite(sky.tg.color), sp.x - size / 2, sp.y - size / 2, size, size);
+        ctx.globalAlpha = 1;
+      }
+    }
 
     // stars — fixed sky, parallax from rotation only
     for (const s of this.stars) {
@@ -837,13 +954,33 @@ export class VoyageEngine {
       ctx.fillRect(p.x, p.y, sz, sz);
     }
 
-    // dust — near-field parallax so motion is legible
-    ctx.fillStyle = '#8fa3bf';
+    // dust — near-field parallax so motion is legible; breathes the sky's hue
+    ctx.fillStyle = sky
+      ? this.blendTint(143, 163, 191, sky.tg.color, sky.w * 0.5)
+      : '#8fa3bf';
     for (const d of this.dust) {
       const p = this.projectScratch(d.x, d.y, d.z);
       if (!p || p.x < -3 || p.x > w + 3 || p.y < -3 || p.y > h + 3) continue;
       ctx.globalAlpha = clamp(60 / p.z, 0.03, 0.3);
       ctx.fillRect(p.x, p.y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    // lineage haze — nebula wisps around each world, ghostly while dim
+    for (const hz of this.haze) {
+      if (!hz.tg.present) continue;
+      // one wisp suffices for a ghost (dim) or a thinned sky (quality drop)
+      if (hz.k > 0 && (hz.tg.dim || this.quality < 1)) continue;
+      const p = this.projectScratch(hz.p.x, hz.p.y, hz.p.z);
+      if (!p) continue;
+      const size = Math.min(hz.size * p.scale, Math.max(w, h) * 1.8);
+      if (size < 14) continue; // too far to read — the world's own glow covers it
+      if (p.x < -size / 2 || p.x > w + size / 2 || p.y < -size / 2 || p.y > h + size / 2) continue;
+      const nearFade = clamp((p.z - NEAR) / 90, 0, 1);
+      const farFade = clamp(2.2 - p.z / 900, 0.35, 1); // same falloff as bodies
+      const mirage = hz.tg.worldKind === 'rejected' ? 0.55 : 1;
+      ctx.globalAlpha = (hz.tg.dim ? 0.14 : 0.5) * nearFade * farFade * mirage;
+      ctx.drawImage(hz.sprite, p.x - size / 2, p.y - size / 2, size, size);
     }
     ctx.globalAlpha = 1;
 
@@ -895,10 +1032,14 @@ export class VoyageEngine {
       const nearFade = clamp((p!.z - NEAR) / (tg.r * 1.1), 0, 1);
       const alpha = (tg.dim ? 0.13 : clamp(2.2 - p!.z / 900, 0.35, 1)) * nearFade;
       if (tg.kind === 'world') {
-        paintWorld(ctx, tg.worldKind ?? 'stoicism', tg.color, p!.x, p!.y, sr, t, {
+        // approach resolves the world: surface detail and orbital structure
+        // fade in as it fills more of the screen (silhouettes stay bare)
+        const detail = tg.dim ? 0 : clamp((sr - 34) / 130, 0, 1);
+        paintWorld(ctx, tg.worldKind ?? 'stoicism', tg.color, p!.x, p!.y, sr, wt, {
           alpha,
           visited: tg.visited,
           seed: tg.id.length + tg.id.charCodeAt(0),
+          detail,
         });
       } else if (tg.kind === 'sun') {
         this.paintSun(p!.x, p!.y, sr, t, alpha);
@@ -954,6 +1095,27 @@ export class VoyageEngine {
         ctx.drawImage(glowSprite(color), p.x - sz / 2, p.y - sz / 2, sz, sz);
         ctx.globalAlpha = 1;
       }
+      // and a stream of dust rides it — matter drawn along the connection,
+      // flowing outward from the sun. Allocation-free; skipped when broken.
+      const n = this.quality === 1 ? 9 : 5;
+      const phase = (a.x + b.z) * 0.001;
+      const dxT = b.x - a.x;
+      const dyT = b.y - a.y;
+      const dzT = b.z - a.z;
+      ctx.fillStyle = rgba(color, 0.8);
+      for (let i = 0; i < n; i++) {
+        const su = (t * 0.045 + phase + i / n + jitter(a.x + b.z, i) * 0.06) % 1;
+        // a gentle wander off the line so it reads as a current, not beads
+        const sway = Math.sin(su * Math.PI * 3 + t * 0.5 + i) * 5;
+        const lift = Math.cos(su * Math.PI * 2 + t * 0.4 + i * 2.1) * 5;
+        const p2 = this.projectScratch(a.x + dxT * su + sway, a.y + dyT * su + lift, a.z + dzT * su);
+        if (!p2 || p2.x < -4 || p2.x > this.w + 4 || p2.y < -4 || p2.y > this.h + 4) continue;
+        const fade = Math.sin(su * Math.PI); // born at the sun, dissolving at the world
+        ctx.globalAlpha = clamp(80 / p2.z, 0.04, 0.45) * (0.25 + 0.75 * fade);
+        const sz2 = clamp(p2.scale * 1.6, 0.8, 2.4);
+        ctx.fillRect(p2.x, p2.y, sz2, sz2);
+      }
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -1021,16 +1183,13 @@ export class VoyageEngine {
       ctx.globalAlpha = a * (0.7 + this.gateFlare);
       ctx.drawImage(glowSprite(gold), x - sz / 2, y - sz / 2, sz, sz);
       ctx.globalAlpha = a;
-      // a pillar of light — visible across space once open
+      // a pillar of light — visible across space once open (pre-rendered
+      // beam; the per-frame gradient here was a flagged perf cost)
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const bh = r * 14;
-      const bg = ctx.createLinearGradient(x, y - bh / 2, x, y + bh / 2);
-      bg.addColorStop(0, rgba(gold, 0));
-      bg.addColorStop(0.5, rgba(gold, 0.2 + this.gateFlare * 0.4));
-      bg.addColorStop(1, rgba(gold, 0));
-      ctx.fillStyle = bg;
-      ctx.fillRect(x - r * 0.3, y - bh / 2, r * 0.6, bh);
+      ctx.globalAlpha = a * (0.45 + this.gateFlare * 0.8);
+      ctx.drawImage(beamSprite(gold), x - r * 0.65, y - bh / 2, r * 1.3, bh);
       ctx.restore();
     }
     // the ring itself — a doorway standing in space

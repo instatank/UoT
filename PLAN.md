@@ -13,16 +13,15 @@ A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice 
 - **SVG for all three maps**, rendered into a shared camera engine (`MapViewport`) rather than laid out flat — see below. No chart library — layouts are simple enough to compute by hand, and full control keeps the contemplative aesthetic.
 - **No new runtime dependencies.** Camera gestures are hand-rolled pointer events + rAF; voice is the browser's Web Speech API; ambience is generated WebAudio. `package.json` still lists only next/react/typescript.
 
-## Next steps — planned with AA, deliberately NOT built yet (2026-07-10)
+## Next steps — planned with AA (2026-07-10)
 
-AA signed off on the Voyage's first look ("intuitive, natural, interactive and immersive — good job") and directed: take the learnings, note the pending steps, build later. In rough priority order:
+AA signed off on the Voyage's first look ("intuitive, natural, interactive and immersive — good job") and directed: take the learnings, note the pending steps, build later. Queue item #1 — **the atmosphere pass** — is now built (same day, branch `claude/atmosphere-interactive-elements-oa2to9`); see "The atmosphere pass" under the Voyage section below. Still open, in rough priority order:
 
-1. **The atmosphere pass** (AA: "totally with you") — what you fly *through* between stops: nebula fields, dust streams flowing along the threads, worlds that grow richer on approach (surface detail, orbital structures resolving), per-lineage skyboxes near each world. Build on the working navigation layer; never at its expense.
-2. **Pacing dials** — AA calls current pacing "decent, we'll refine later." The dials are named in code: idle-drift delay (7 s) and turn rate (0.35 rad/s) in `engine.ts` `freeFlight`; gaze settle (1.7 s, `orientToward`); cruise/thrust (`CRUISE`/`THRUST_MAX`); orbit speed; autopilot duration. Tune with AA on-device, not in review.
-3. **Deferred review findings** — ranked list at the end of NOTES.md "Adversarial review pass" (per-frame gradients in the Christianity world + gate pillar, thread near-plane clipping, orbit-entry continuity, label caching, DPR-3 label softness, StrictMode double-write in `state.ts`, chamber focus restore).
-4. **Voyage ↔ bird's-eye state carry-over** — the two routes hold separate `useSessionState` instances; progress resets when switching. Lift to a store or sessionStorage snapshot keyed by session id.
-5. **Voyage on real devices** — drag feel, pinch feel, thermals, iOS Safari canvas perf. All Playwright-verified only so far.
-6. **The actual product priority beneath all presentation work** (PRODUCT.md Phase 1): the Admission Gauntlet kill-pass on `registry/drafts/anxiety-gauntlet.md` — AA's judgment-hours, not code. The Voyage is a reader; the Registry is the company.
+1. **Pacing dials** — AA calls current pacing "decent, we'll refine later." The dials are named in code: idle-drift delay (7 s) and turn rate (0.35 rad/s) in `engine.ts` `freeFlight`; gaze settle (1.7 s, `orientToward`); cruise/thrust (`CRUISE`/`THRUST_MAX`); orbit speed; autopilot duration. Tune with AA on-device, not in review.
+2. **Deferred review findings** — ranked list at the end of NOTES.md "Adversarial review pass" (thread near-plane clipping, orbit-entry continuity, label caching, DPR-3 label softness, StrictMode double-write in `state.ts`, chamber focus restore; the two per-frame-gradient findings — Christianity world beams, gate pillar — were cashed in during the atmosphere pass).
+3. **Voyage ↔ bird's-eye state carry-over** — the two routes hold separate `useSessionState` instances; progress resets when switching. Lift to a store or sessionStorage snapshot keyed by session id.
+4. **Voyage on real devices** — drag feel, pinch feel, thermals, iOS Safari canvas perf, and now atmosphere blit cost on real GPUs. All Playwright-verified only so far.
+5. **The actual product priority beneath all presentation work** (PRODUCT.md Phase 1): the Admission Gauntlet kill-pass on `registry/drafts/anxiety-gauntlet.md` — AA's judgment-hours, not code. The Voyage is a reader; the Registry is the company.
 
 ## The Voyage (first-person pass)
 
@@ -32,6 +31,16 @@ AA's explicit direction (2026-07-10, amending decision 8's presentation half): n
 - **`lib/voyage/worlds.ts`** — procedural per-lineage world painters (symbolic geometry only, decision 7): Stoic square-in-circle, Buddhist eight-spoke wheel, Gītā flame petals, Christian light-beams, Sufi spiral of motes, Taoist watercourse, neuroscience axon filaments with travelling signals; the rejected parallel is an **ember mirage** — flickering, broken rings, a glitching double, no thread to the gate. Pre-rendered glow sprites (per-frame gradients are too slow).
 - **`components/VoyageView.tsx`** — React shell: builds the scene from SessionData (seeded PRNG layout), syncs the session arc into target states (beacon → sun active after complaint → worlds surface after mechanism → gate ignites when practice unlocks), opens full-screen **chambers** in orbit (lineage wash + watermark + passage/reading/folds + voice + re-voiced ambience), and runs arrival (gate capture → `arrive()` → reveal → ArrivalOverlay with the Thread). Reduced motion: no drift, instant travel cuts, static orbits.
 - The session arc is enforced exactly as in the maps: dim bodies are unclickable and exert no gravity until the arc surfaces them; the gate is sealed until an accepted parallel has landed.
+
+### The atmosphere pass (2026-07-10) — what you fly through between stops
+
+Queue item #1 after AA's sign-off (AA: "totally with you"), layered onto the navigation without touching it — all in `engine.ts`/`worlds.ts`, `VoyageView` unchanged:
+
+- **Nebula fields** — four far nebulae fixed on the sky sphere (cool slate/violet/teal/dun gauze behind the stars) plus lineage-hued wisps anchored around each world (`nebulaSprite`: seeded blob-walk under a circular falloff mask, pre-rendered per color+seed). Dim worlds keep one ghost wisp at low alpha, so the "worlds have surfaced" beat also pours their atmosphere in.
+- **Dust streams on the threads** — alongside the existing pulse, ~9 motes ride each live thread outward from the sun with a slow sine wander (a current, not beads). Allocation-free; the rejected world's broken thread carries nothing.
+- **Worlds grow richer on approach** — a `detail` factor (0→1 with screen radius) resolves per-lineage structure (Stoic inner keep + watch-fires, Buddhist rim ticks + hub, Gītā brazier + rising sparks, Christian slanted beams + high lights, Sufi counter-turning arm, Taoist eddies, neuro synapse terminals) plus a generic tilted orbital band with two companions. The **mirage inverts it**: up close its ring gaps widen, the glitch-double shows more often, static slices the disc — it thins where real worlds deepen.
+- **Per-lineage skyboxes** — nearing a world its air pours in: the backdrop tints toward the lineage hue, a wide `skySprite` wash floods the sky behind the stars, and the near-field dust breathes the same color (cached quantized tint strings — no per-frame gradient or string churn).
+- **Perf discipline**: every gradient is a pre-rendered sprite; hot loops stay allocation-free; the adaptive quality drop now also thins wisps/streams/nebulae; a 3 s warm-up grace stops first-paint sag from permanently degrading the sky; the two flagged per-frame gradients (Christianity beams, gate pillar) moved to a shared soft-edged `beamSprite`. Under reduced motion the streams are skipped and world/atmosphere time is frozen (worlds previously kept rotating — fixed en route). Cost was gated on a headless A/B against the pre-atmosphere build, not a feeling — method and numbers in NOTES.md.
 
 ## The world layer (immersive pass)
 
@@ -132,8 +141,8 @@ lib/
   rand.ts                      — seeded PRNG (deterministic constellation/door layouts)
   voice.ts                     — Web Speech API wrapper + per-node speech text
   ambience.ts                  — generated WebAudio drone, toggleable + lineage re-voicing
-  voyage/engine.ts             — first-person Canvas-3D flight engine (no deps)
-  voyage/worlds.ts             — per-lineage procedural world painters + glow sprites
+  voyage/engine.ts             — first-person Canvas-3D flight engine (no deps) + atmosphere layers
+  voyage/worlds.ts             — per-lineage world painters + glow/nebula/sky/beam sprites
   flags.ts                     — doorsEnabled
   naming.ts                    — crisis floor, heuristic classifier, miss log (isomorphic)
   thread.ts                    — mintThread, wrapText, exportSvgAsPng
