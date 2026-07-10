@@ -1643,6 +1643,75 @@ ol.steps li::before {
   opacity: 0;
 }
 
+/* ----- the compass — quiet instrument, bottom-right ----- */
+
+.vcompass {
+  position: absolute;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-areas:
+    '. up .'
+    'left go right'
+    '. down .';
+  gap: 4px;
+  z-index: 6;
+  animation: surface 1.4s ease 1s both;
+}
+
+.vc-btn,
+.vc-go {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(27, 34, 48, 0.9);
+  background: rgba(10, 13, 19, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--faint);
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.vc-btn:hover,
+.vc-btn:active {
+  color: var(--text);
+  border-color: #2b3550;
+}
+
+.vc-up {
+  grid-area: up;
+  transform: rotate(90deg);
+}
+.vc-down {
+  grid-area: down;
+  transform: rotate(90deg);
+}
+.vc-left {
+  grid-area: left;
+}
+.vc-right {
+  grid-area: right;
+}
+
+.vc-go {
+  grid-area: go;
+  color: var(--gold-dim);
+  border-color: rgba(216, 201, 138, 0.3);
+  font-size: 14px;
+}
+
+.vc-go:hover {
+  color: var(--gold);
+  border-color: rgba(216, 201, 138, 0.55);
+  box-shadow: 0 0 14px rgba(216, 201, 138, 0.12);
+}
+
 /* the pointer-free path through the voyage — visually hidden, focusable */
 .v-sr-nav {
   position: absolute;

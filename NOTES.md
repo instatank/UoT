@@ -89,6 +89,19 @@ AA, after feeling the world pass: "I want that kind of a world… like I'm flyin
 - Automation hook: `window.__voyageTravel(id)` + `__voyageEngine` are exposed from VoyageView for deterministic Playwright flights (screen-space clicking a moving 3D body is hopeless). Harmless in prod; remove if it ever bothers anyone.
 - Verified via Playwright (Chromium 1440×900 + 390×844 touch): intro → tap beacon → complaint chamber → sun → mechanism chamber → two worlds (incl. the rejected mirage) → gate → reveal → ArrivalOverlay with Thread → dismissed into the revealed figure; mobile beacon-tap chamber. Zero console errors. Still untested on device: drag feel, thermals on long sessions, iOS Safari canvas perf.
 
+### The discoverability failure (AA's first real test) and the navigation pass
+
+AA's field report: "the only thing that's happening is the complaint… I click, it opens, I close, it resets. THERE IS NOTHING ELSE AVAILABLE." Root cause: the sun sat ~75° below the beacon (physically outside the view), the guiding hint faded after 7 s, and the worlds were dim by design — so the universe visibly ended at the first stop. **The automated drive never caught it because it teleported between stops via the test hook; it verified the state machine, not the experience.** Standing lesson: for spatial UX, at least one test must complete the loop with real input only.
+
+Fixes, all verified by a real-clicks-only Playwright run (zero hooks) plus a compass-only run and an idle run:
+
+- **Layout arc**: the system now lies along a gentle forward descent — beacon ahead (camera starts on it), sun forward-below (~20°), worlds ringing the sun, gate directly *below* the sun. (First attempt put the gate *behind* the sun: occluded, and center-taps meant for it hit the sun. Same class of bug as the original — "next thing not visibly reachable.")
+- **Gaze guidance**: after each release the camera's gaze eases onto the arc's next destination (re-aimed every frame — the lift-off drift otherwise pulls it off target). Any drag/wheel/arrow cancels it: guidance, not possession.
+- **Cue halos** breathe on the next destination (same language as the maps' cue ring); arc-critical hints persist until acted on.
+- **Pick scoring** normalizes by radius (d/rad) so a small gate under the cursor beats a huge sun covering the same pixels.
+- **The compass** (bottom-right): hold chevrons to look, ◉ = "carry me onward" (travels to the cue, else nearest unvisited world). Arrow keys now *look* (W/space sails, S brakes). Pinch-dolly on touch; trackpad pinch (ctrl+wheel) sails.
+- **Idle voyage**: ~7 s without input in free flight and the ship drifts (patiently, 0.35 rad/s max turn) toward the undiscovered; gravity completes the capture. Any input takes the helm back. Checked against decision 6: this is ambient drift toward *content*, not a reward loop; arrival remains the only exit.
+
 ### Adversarial review pass (7 lenses, 39 findings) and the fix batch
 
 A multi-agent review ran over the voyage: engine math, React integration, performance, mobile/touch, and a11y/reduced-motion lenses completed (39 findings); the locked-decisions-compliance and regression-sweep lenses, plus the per-finding adversarial verification stage, were cut short by usage limits — treat those as *not run*, not as clean. The findings were triaged by hand instead; fixes applied and the fixed build re-verified end-to-end (tsc clean, build clean, full Playwright voyage + session-arrival loops, zero console errors):

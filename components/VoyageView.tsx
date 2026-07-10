@@ -37,6 +37,14 @@ import ArrivalOverlay from './ArrivalOverlay';
 const COMPLAINT_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
 
+// The system lies along a gentle forward-descending arc — every next
+// destination sits within a comfortable look, never straight down. (The first
+// layout put the sun ~75° below the beacon: invisible, and the voyage died
+// there for a real user.) The gate hangs BELOW the sun, never behind it —
+// behind meant occluded, and taps meant for the gate hit the sun instead.
+const SUN_POS: [number, number, number] = [0, 0, 330];
+const GATE_POS: [number, number, number] = [0, -330, 330];
+
 function buildTargets(session: SessionData): {
   targets: VoyageTarget[];
   camPos: [number, number, number];
@@ -46,13 +54,17 @@ function buildTargets(session: SessionData): {
   const N = session.parallels.length;
   const worlds: VoyageTarget[] = session.parallels.map((p, i) => {
     const ang = ((-90 + (360 / N) * i + (rng() - 0.5) * 24) * Math.PI) / 180;
-    const rad = 320 + rng() * 70;
-    const y = -50 + rng() * 120;
+    const rad = 310 + rng() * 70;
+    const y = -70 + rng() * 150;
     const rejected = p.status === 'rejected';
     return {
       id: p.id,
       kind: 'world',
-      pos: [Math.cos(ang) * rad, y, Math.sin(ang) * rad],
+      pos: [
+        SUN_POS[0] + Math.cos(ang) * rad,
+        SUN_POS[1] + y,
+        SUN_POS[2] + Math.sin(ang) * rad,
+      ],
       r: 30,
       title: p.title,
       subtitle: p.lineage,
@@ -69,7 +81,7 @@ function buildTargets(session: SessionData): {
     {
       id: 'beacon',
       kind: 'beacon',
-      pos: [0, 470, 160],
+      pos: [0, 205, -50],
       r: 16,
       title: 'the complaint',
       subtitle: 'the surface',
@@ -79,11 +91,12 @@ function buildTargets(session: SessionData): {
       dim: false,
       locked: false,
       visited: false,
+      cue: true,
     },
     {
       id: 'mechanism',
       kind: 'sun',
-      pos: [0, 0, 0],
+      pos: SUN_POS,
       r: 34,
       title: session.mechanism.name,
       subtitle: 'the mechanism',
@@ -98,7 +111,7 @@ function buildTargets(session: SessionData): {
     {
       id: 'gate',
       kind: 'gate',
-      pos: [0, -270, 40],
+      pos: GATE_POS,
       r: 26,
       title: session.practice.name,
       subtitle: 'the practice gate · sealed',
@@ -110,7 +123,7 @@ function buildTargets(session: SessionData): {
       visited: false,
     },
   ];
-  return { targets, camPos: [0, 500, -140], lookAt: [0, 470, 160] };
+  return { targets, camPos: [0, 250, -330], lookAt: [0, 205, -50] };
 }
 
 function ListenPill({ session, refNode }: { session: SessionData; refNode: NodeRef }) {
@@ -313,6 +326,8 @@ export default function VoyageView({ session }: { session: SessionData }) {
   const stateRef = useRef(state);
   stateRef.current = state;
   const arrivedRef = useRef(false);
+  const sceneRef = useRef<VoyageTarget[]>([]);
+  const gateOriented = useRef(false);
 
   const say = useCallback((text: string | null, ms = 7000) => {
     window.clearTimeout(hintTimer.current);
@@ -337,6 +352,7 @@ export default function VoyageView({ session }: { session: SessionData }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setReduced(reduced);
     const { targets, camPos, lookAt } = buildTargets(session);
+    sceneRef.current = targets;
     const engine = new VoyageEngine(canvas, {
       onCapture: (id) => {
         if (id === 'gate') {
@@ -359,6 +375,7 @@ export default function VoyageView({ session }: { session: SessionData }) {
         }
         const ref = refFor(id);
         if (!ref) return;
+        say(null);
         select(ref);
         setChamber(ref);
         if (ref.kind === 'parallel') {
@@ -395,15 +412,19 @@ export default function VoyageView({ session }: { session: SessionData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // session arc → target states
+  // session arc → target states (incl. the breathing cue on what comes next)
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    e.patchTarget('beacon', { visited: state.complaintTouched });
+    e.patchTarget('beacon', {
+      visited: state.complaintTouched,
+      cue: !state.complaintTouched,
+    });
     e.patchTarget('mechanism', {
       dim: !state.complaintTouched,
       active: state.complaintTouched,
       visited: state.mechanismRevealed,
+      cue: state.complaintTouched && !state.mechanismRevealed,
     });
     for (const p of session.parallels) {
       e.patchTarget(p.id, {
@@ -415,6 +436,7 @@ export default function VoyageView({ session }: { session: SessionData }) {
     e.patchTarget('gate', {
       dim: !practiceUnlocked,
       locked: !practiceUnlocked,
+      cue: practiceUnlocked && !state.arrived,
       subtitle: practiceUnlocked ? 'the practice gate — enter' : 'the practice gate · sealed',
     });
   }, [state, practiceUnlocked, session]);
@@ -423,37 +445,50 @@ export default function VoyageView({ session }: { session: SessionData }) {
     const wasKind = chamber?.kind;
     setChamber(null);
     tintAmbience(null);
-    engineRef.current?.release();
-    // the arc's quiet stage directions — reduced-motion users tap, not fly
+    const e = engineRef.current;
+    e?.release();
+    // the arc's stage directions: the gaze settles onto what comes next, the
+    // hint stays until it's acted on (a 7-second flash was findable by no one)
     const s = stateRef.current;
-    if (wasKind === 'complaint' && !s.mechanismRevealed)
+    if (wasKind === 'complaint' && !s.mechanismRevealed) {
+      e?.orientToward(SUN_POS);
       say(
         reduced
-          ? 'something is running underneath — tap the light below'
-          : 'something is running underneath — descend to the light below'
+          ? 'something is running underneath — tap the sun'
+          : 'something is running underneath — the sun ahead',
+        0
       );
-    else if (wasKind === 'mechanism' && s.visitedParallels.length === 0)
+    } else if (wasKind === 'mechanism' && s.visitedParallels.length === 0) {
+      const firstWorld = sceneRef.current.find((t) => t.kind === 'world');
+      if (firstWorld) e?.orientToward(firstWorld.pos);
       say(
         reduced
-          ? 'worlds have surfaced around you — tap one to approach'
-          : 'worlds have surfaced around you — fly to one'
+          ? 'worlds have surfaced around the sun — tap one to approach'
+          : 'worlds have surfaced around the sun — fly to one, or look around',
+        0
       );
-    else if (practiceUnlocked && !s.arrived)
-      say(
-        reduced
-          ? 'far below the sun, a golden gate stands open — tap it'
-          : 'far below the sun, a golden gate stands open'
-      );
+    } else if (practiceUnlocked && !s.arrived) {
+      if (!gateOriented.current) {
+        gateOriented.current = true;
+        e?.orientToward(GATE_POS);
+        say(
+          reduced
+            ? 'beyond the sun, a golden gate stands open — tap it when ready'
+            : 'beyond the sun, a golden gate stands open — enter it when ready',
+          0
+        );
+      }
+    }
   }, [chamber, practiceUnlocked, reduced, say]);
 
-  // first hint once the intro lifts
+  // first hint once the intro lifts — stays until the beacon is reached
   useEffect(() => {
     if (!intro)
       say(
         reduced
-          ? 'tap the pale light to approach it'
-          : 'drag to look around · tap the pale light to approach it',
-        9000
+          ? 'tap the pale light to approach it — or use the compass ◉'
+          : 'drag or arrow-keys to look · tap the pale light — or let ◉ carry you',
+        0
       );
   }, [intro, reduced, say]);
 
@@ -533,6 +568,48 @@ export default function VoyageView({ session }: { session: SessionData }) {
       <div className={`vhint${hint && !chamber ? '' : ' off'}`} aria-live="polite">
         {hint ?? ''}
       </div>
+
+      {/* the compass — hold a chevron to look; the center carries you onward */}
+      {!chamber && !arrivalOpen && (
+        <div className="vcompass" role="group" aria-label="Voyage compass">
+          {(
+            [
+              ['up', '‹', 0, -1, 'look up'],
+              ['left', '‹', -1, 0, 'look left'],
+              ['go', '◉', 0, 0, 'carry me onward'],
+              ['right', '›', 1, 0, 'look right'],
+              ['down', '›', 0, 1, 'look down'],
+            ] as const
+          ).map(([key, glyph, lx, ly, label]) =>
+            key === 'go' ? (
+              <button
+                key={key}
+                className="vc-go"
+                aria-label={label}
+                title="carry me onward"
+                onClick={() => engineRef.current?.travelNext()}
+              >
+                {glyph}
+              </button>
+            ) : (
+              <button
+                key={key}
+                className={`vc-btn vc-${key}`}
+                aria-label={label}
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  engineRef.current?.setLookHeld(lx, ly);
+                }}
+                onPointerUp={() => engineRef.current?.setLookHeld(0, 0)}
+                onPointerCancel={() => engineRef.current?.setLookHeld(0, 0)}
+                onPointerLeave={() => engineRef.current?.setLookHeld(0, 0)}
+              >
+                {glyph}
+              </button>
+            )
+          )}
+        </div>
+      )}
 
       {chamber && (
         <Chamber

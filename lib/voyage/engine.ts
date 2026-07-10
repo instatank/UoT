@@ -28,6 +28,7 @@ export interface VoyageTarget {
   dim: boolean; // silhouette only (not yet surfaced by the session arc)
   locked: boolean; // the sealed gate
   visited: boolean;
+  cue?: boolean; // the arc's next destination — it breathes
 }
 
 export interface EngineCallbacks {
@@ -128,6 +129,11 @@ export class VoyageEngine {
   // the body you just left and the chamber never closes
   private escape: { id: string; dir: V3; until: number } | null = null;
 
+  // a gentle gaze-pull toward the arc's next destination (position unchanged);
+  // any user drag or wheel cancels it — guidance, not possession. The target
+  // point is re-aimed every frame: the camera keeps drifting while it turns.
+  private gaze: { p: V3; yaw0: number; pitch0: number; t0: number; dur: number } | null = null;
+
   // reveal
   private revealT = 0;
   private revealPath: V3[] = [];
@@ -149,7 +155,14 @@ export class VoyageEngine {
     moved: boolean;
     id: number;
   } | null = null;
+  // two fingers = pinch-dolly (move forward/back), never a look or a tap
+  private pinch: { idA: number; idB: number; a: { x: number; y: number }; b: { x: number; y: number }; lastD: number } | null =
+    null;
   private keys = new Set<string>();
+  // the on-screen compass holds a look direction while pressed
+  private lookHeld = { x: 0, y: 0 };
+  // idle → the voyage carries itself toward the undiscovered
+  private lastInput = 0;
 
   private raf = 0;
   private last = 0;
@@ -185,6 +198,7 @@ export class VoyageEngine {
     this.bind();
     this.t0 = performance.now();
     this.last = this.t0;
+    this.lastInput = this.t0;
     const loop = (now: number) => {
       if (this.disposed) return;
       this.tick(now);
@@ -218,6 +232,7 @@ export class VoyageEngine {
     const dir = norm(sub(this.pos, tp));
     const dest = v3(tp.x + dir.x * stand, tp.y + dir.y * stand * 0.6 + t.r * 0.5, tp.z + dir.z * stand);
     this.escape = null;
+    this.gaze = null;
     this.captured = t;
     this.orbitDist = stand;
     if (this.reducedMotion) {
@@ -233,6 +248,47 @@ export class VoyageEngine {
     this.apDur = clamp(len(sub(dest, this.pos)) / 220, 1.4, 3.4) * 1000;
     this.apThen = 'orbit';
     this.mode = 'autopilot';
+  }
+
+  /** Hold a look direction (the compass chevrons); (0,0) releases it. */
+  setLookHeld(x: number, y: number): void {
+    this.lookHeld.x = x;
+    this.lookHeld.y = y;
+    this.lastInput = performance.now();
+    if (x !== 0 || y !== 0) this.gaze = null;
+  }
+
+  /** Carry the traveler onward — to the arc's cue, else the nearest
+   * unvisited world. The compass center button, and the idle drift's target. */
+  travelNext(): void {
+    const next = this.nextDestination();
+    if (next) this.travelTo(next.id);
+  }
+
+  private nextDestination(): VoyageTarget | null {
+    const cue = this.targets.find((t) => t.cue && t.present && t.active && !t.locked);
+    if (cue) return cue;
+    let best: VoyageTarget | null = null;
+    let bestD = Infinity;
+    for (const t of this.targets) {
+      if (t.kind !== 'world' || !t.present || !t.active || t.visited) continue;
+      const d = len(sub(v3(...t.pos), this.pos));
+      if (d < bestD) {
+        best = t;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  /** Ease the gaze onto a point without moving — the arc showing the way. */
+  orientToward(p: [number, number, number], ms = 1700): void {
+    const target = v3(...p);
+    if (this.reducedMotion) {
+      this.lookToward(target);
+      return;
+    }
+    this.gaze = { p: target, yaw0: this.yaw, pitch0: this.pitch, t0: performance.now(), dur: ms };
   }
 
   /** Leave orbit and return to free flight — with a push off the body. */
@@ -276,11 +332,15 @@ export class VoyageEngine {
       t.dim = false;
       t.present = true;
     }
-    const out = norm(v3(this.pos.x, Math.max(this.pos.y, 180), this.pos.z || 1));
-    const vantage = v3(out.x * 980, Math.max(out.y * 980, 300), out.z * 980);
+    // frame the whole figure: pull back above and behind its centroid
+    const centroid = path.reduce((a, p) => v3(a.x + p.x, a.y + p.y, a.z + p.z), v3());
+    centroid.x /= path.length || 1;
+    centroid.y /= path.length || 1;
+    centroid.z /= path.length || 1;
+    const vantage = v3(centroid.x, centroid.y + 260, centroid.z - 900);
     if (this.reducedMotion) {
       this.pos = vantage;
-      this.lookToward(v3(0, -60, 0));
+      this.lookToward(centroid);
       this.mode = 'revealed';
       this.revealT = 1;
       this.finishReveal();
@@ -288,7 +348,7 @@ export class VoyageEngine {
     }
     this.apFrom = { ...this.pos };
     this.apTo = vantage;
-    this.apTarget = v3(0, -60, 0);
+    this.apTarget = centroid;
     this.apLook0 = { yaw: this.yaw, pitch: this.pitch };
     this.apStart = performance.now();
     this.apDur = 3600;
@@ -321,7 +381,23 @@ export class VoyageEngine {
   // ---------- input ----------
 
   private onPointerDown = (e: PointerEvent) => {
-    if (this.drag) return; // one finger flies the ship; a second is ignored
+    this.lastInput = performance.now();
+    if (this.pinch) return; // two fingers already down
+    if (this.drag) {
+      // a second finger converts the drag into a pinch-dolly — no tap, no look
+      this.canvas.setPointerCapture(e.pointerId);
+      const a = { x: this.drag.x, y: this.drag.y };
+      const b = { x: e.clientX, y: e.clientY };
+      this.pinch = {
+        idA: this.drag.id,
+        idB: e.pointerId,
+        a,
+        b,
+        lastD: Math.hypot(a.x - b.x, a.y - b.y),
+      };
+      this.drag = null;
+      return;
+    }
     this.canvas.setPointerCapture(e.pointerId);
     this.drag = {
       x: e.clientX,
@@ -335,6 +411,21 @@ export class VoyageEngine {
   };
 
   private onPointerMove = (e: PointerEvent) => {
+    if (this.pinch) {
+      const p = this.pinch;
+      if (e.pointerId === p.idA) p.a = { x: e.clientX, y: e.clientY };
+      else if (e.pointerId === p.idB) p.b = { x: e.clientX, y: e.clientY };
+      else return;
+      this.lastInput = performance.now();
+      const d = Math.hypot(p.a.x - p.b.x, p.a.y - p.b.y);
+      if (this.mode === 'free' || this.mode === 'revealed') {
+        // spread = sail forward, squeeze = ease back
+        this.gaze = null;
+        this.wheelImpulse = clamp(this.wheelImpulse + (d - p.lastD) * 1.4, -160, 260);
+      }
+      p.lastD = d;
+      return;
+    }
     if (!this.drag || this.drag.id !== e.pointerId) return;
     const dx = e.clientX - this.drag.x;
     const dy = e.clientY - this.drag.y;
@@ -343,6 +434,8 @@ export class VoyageEngine {
     if (Math.hypot(e.clientX - this.drag.sx, e.clientY - this.drag.sy) > this.drag.slop)
       this.drag.moved = true;
     if (this.drag.moved && (this.mode === 'free' || this.mode === 'revealed')) {
+      this.lastInput = performance.now();
+      this.gaze = null; // the traveler's hand overrides the guidance
       this.yaw -= dx * 0.0032;
       this.pitch = clamp(this.pitch + dy * 0.0028, -1.35, 1.35);
     }
@@ -351,6 +444,11 @@ export class VoyageEngine {
   };
 
   private onPointerUp = (e: PointerEvent) => {
+    this.lastInput = performance.now();
+    if (this.pinch) {
+      if (e.pointerId === this.pinch.idA || e.pointerId === this.pinch.idB) this.pinch = null;
+      return;
+    }
     if (!this.drag || this.drag.id !== e.pointerId) return;
     const d = this.drag;
     this.drag = null;
@@ -362,21 +460,29 @@ export class VoyageEngine {
 
   // a cancelled touch (system gesture, incoming call) is never a tap
   private onPointerCancel = (e: PointerEvent) => {
+    if (this.pinch && (e.pointerId === this.pinch.idA || e.pointerId === this.pinch.idB))
+      this.pinch = null;
     if (this.drag?.id === e.pointerId) this.drag = null;
   };
 
   private onWheel = (e: WheelEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // trackpad pinch arrives as ctrl+wheel — ours, not the page's
     if (this.mode !== 'free' && this.mode !== 'revealed') return;
-    this.wheelImpulse = clamp(this.wheelImpulse - e.deltaY * 0.6, -160, 260);
+    this.lastInput = performance.now();
+    this.gaze = null;
+    const gain = e.ctrlKey ? 2.4 : 0.6;
+    this.wheelImpulse = clamp(this.wheelImpulse - e.deltaY * gain, -160, 260);
   };
 
   private onKey = (e: KeyboardEvent) => {
     // keys pressed on buttons/links belong to those controls, not the ship
     const t = e.target as HTMLElement | null;
     if (t?.closest?.('button, a, input, textarea, [tabindex]')) return;
-    if (e.type === 'keydown') this.keys.add(e.key.toLowerCase());
-    else this.keys.delete(e.key.toLowerCase());
+    this.lastInput = performance.now();
+    if (e.type === 'keydown') {
+      if (e.key.startsWith('Arrow')) e.preventDefault(); // arrows look, not scroll
+      this.keys.add(e.key.toLowerCase());
+    } else this.keys.delete(e.key.toLowerCase());
   };
 
   private bind(): void {
@@ -402,16 +508,20 @@ export class VoyageEngine {
   private pick(sx: number, sy: number): void {
     if (this.mode === 'reveal') return; // the arrival pull-back is not interruptible
     let best: VoyageTarget | null = null;
-    let bestD = Infinity;
+    let bestScore = Infinity;
     for (const t of this.targets) {
       if (!t.present || !t.active) continue;
       const p = this.project(v3(...t.pos));
       if (!p) continue;
       const rad = Math.max(26, p.scale * t.r * 1.5);
       const d = Math.hypot(p.x - sx, p.y - sy);
-      if (d < rad && p.z < bestD) {
+      if (d > rad) continue;
+      // normalize by radius: a small gate under the cursor beats a huge sun
+      // whose disc happens to cover the same pixels
+      const score = d / rad;
+      if (score < bestScore) {
         best = t;
-        bestD = p.z;
+        bestScore = score;
       }
     }
     if (best) this.travelTo(best.id);
@@ -534,10 +644,67 @@ export class VoyageEngine {
 
   private freeFlight(dt: number): void {
     if (this.reducedMotion) return; // no drift under reduced motion — taps travel
-    const thrustKey = this.keys.has('w') || this.keys.has('arrowup') || this.keys.has(' ');
-    const brakeKey = this.keys.has('s') || this.keys.has('arrowdown');
+    const now = performance.now();
+    // guidance: the gaze settles onto the arc's next destination, re-aimed
+    // each frame so the lift-off drift can't pull it off target
+    if (this.gaze) {
+      const g = this.gaze;
+      const u = easeInOut(clamp((now - g.t0) / g.dur, 0, 1));
+      const d = sub(g.p, this.pos);
+      const l = len(d) || 1;
+      let wantYaw = Math.atan2(d.x, d.z);
+      const wantPitch = Math.asin(clamp(d.y / l, -1, 1));
+      while (wantYaw - g.yaw0 > Math.PI) wantYaw -= Math.PI * 2;
+      while (wantYaw - g.yaw0 < -Math.PI) wantYaw += Math.PI * 2;
+      this.yaw = g.yaw0 + (wantYaw - g.yaw0) * u;
+      this.pitch = g.pitch0 + (wantPitch - g.pitch0) * u;
+      if (u >= 1) this.gaze = null;
+    }
+
+    // looking: arrow keys and the held compass
+    const lookX =
+      (this.keys.has('arrowleft') ? -1 : 0) + (this.keys.has('arrowright') ? 1 : 0) + this.lookHeld.x;
+    const lookY =
+      (this.keys.has('arrowup') ? -1 : 0) + (this.keys.has('arrowdown') ? 1 : 0) + this.lookHeld.y;
+    if (lookX !== 0 || lookY !== 0) {
+      this.gaze = null;
+      this.yaw += lookX * 1.1 * dt;
+      this.pitch = clamp(this.pitch - lookY * 0.9 * dt, -1.35, 1.35);
+    }
+
+    // idle: the voyage carries itself — undiscovered things drift into view
+    // and gravity does the rest. Any input takes the helm back.
+    let autoDrift = 0;
+    if (
+      this.mode === 'free' &&
+      !this.gaze &&
+      now - this.lastInput > 7000 &&
+      lookX === 0 &&
+      lookY === 0
+    ) {
+      const next = this.nextDestination();
+      if (next) {
+        const d = sub(v3(...next.pos), this.pos);
+        const l = len(d) || 1;
+        let wantYaw = Math.atan2(d.x, d.z);
+        const wantPitch = Math.asin(clamp(d.y / l, -1, 1));
+        while (wantYaw - this.yaw > Math.PI) wantYaw -= Math.PI * 2;
+        while (wantYaw - this.yaw < -Math.PI) wantYaw += Math.PI * 2;
+        const turn = 0.35 * dt; // patient, never a snap
+        this.yaw += clamp(wantYaw - this.yaw, -turn, turn);
+        this.pitch = clamp(this.pitch + clamp(wantPitch - this.pitch, -turn, turn), -1.35, 1.35);
+        autoDrift = 26;
+      }
+    }
+
+    const thrustKey = this.keys.has('w') || this.keys.has(' ');
+    const brakeKey = this.keys.has('s');
     const targetSpeed =
-      CRUISE + (thrustKey ? THRUST_MAX : 0) + this.wheelImpulse - (brakeKey ? CRUISE + 40 : 0);
+      CRUISE +
+      autoDrift +
+      (thrustKey ? THRUST_MAX : 0) +
+      this.wheelImpulse -
+      (brakeKey ? CRUISE + 40 : 0);
     this.wheelImpulse *= Math.pow(0.2, dt); // impulses decay
     this.speed += (targetSpeed - this.speed) * Math.min(1, dt * 2.2);
     const fwd = this.forward();
@@ -739,6 +906,16 @@ export class VoyageEngine {
         this.paintBeacon(p!.x, p!.y, sr, t, alpha, tg.visited);
       } else {
         this.paintGate(p!.x, p!.y, sr, t, alpha, tg.locked);
+      }
+      // the arc's next destination breathes — visible across the whole space
+      if (tg.cue && !tg.dim && this.mode !== 'reveal' && this.mode !== 'revealed') {
+        const ph = this.reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.6);
+        const cr = Math.max(sr, 5) * (1.7 + ph * 0.5);
+        ctx.beginPath();
+        ctx.arc(p!.x, p!.y, cr, 0, Math.PI * 2);
+        ctx.strokeStyle = rgba(tg.color, 0.14 + ph * 0.38);
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
       }
       // labels — etched, close enough to read, not while dim
       if (!tg.dim && p!.z < 620 && sr > 7 && this.mode !== 'reveal') {
