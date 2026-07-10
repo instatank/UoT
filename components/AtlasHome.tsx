@@ -217,7 +217,9 @@ export default function AtlasHome() {
       y: ((rect.top + rect.height / 2) / window.innerHeight) * 100,
     });
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => router.push(`/session/${s.id}`), reduced ? 0 : 820);
+    // doors open onto the Voyage — the first-person flight; the bird's-eye
+    // lenses stay reachable from inside it
+    window.setTimeout(() => router.push(`/voyage/${s.id}`), reduced ? 0 : 820);
   };
 
   return (
@@ -243,7 +245,7 @@ export default function AtlasHome() {
           {sessions.map((s, i) => (
             <Link
               key={s.id}
-              href={`/session/${s.id}`}
+              href={`/voyage/${s.id}`}
               className={`door${entering?.id === s.id ? ' opening' : ''}`}
               style={{ animationDelay: `${0.25 + i * 0.12}s` }}
               onClick={(e) => enter(e, s)}

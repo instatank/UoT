@@ -242,7 +242,10 @@ export default function SessionView({ session }: { session: SessionData }) {
     >
       <header className="session-header">
         <Link href="/" className="back">
-          ← sessions
+          ← atlas
+        </Link>
+        <Link href={`/voyage/${session.id}`} className="back voyage-link" title="enter the voyage">
+          ✦ voyage
         </Link>
         <span className="title">“{session.surfaceComplaint}”</span>
         <span className="chip">{session.painCategory}</span>

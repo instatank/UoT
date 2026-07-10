@@ -88,13 +88,16 @@ export function tintAmbience(
 export async function toggleAmbience(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   if (!running) {
+    // flip synchronously — resume() can take hundreds of ms on iOS, and a
+    // fast double-tap must read as on→off, not start twice
+    running = true;
     if (!ctx) build();
     await ctx!.resume();
+    if (!running) return false; // toggled back off while resume() was pending
     const t = ctx!.currentTime;
     master!.gain.cancelScheduledValues(t);
     master!.gain.setValueAtTime(master!.gain.value, t);
     master!.gain.linearRampToValueAtTime(LEVEL, t + 2.5);
-    running = true;
   } else {
     const t = ctx!.currentTime;
     master!.gain.cancelScheduledValues(t);

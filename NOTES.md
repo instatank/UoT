@@ -79,6 +79,29 @@ The ratification pass (`claude/unity-truths-plan-review-i0cvea`) and the immersi
 - The Door's entry link lives on the Atlas (flag-gated, `.atlas-door-entry`), styled as a threshold-without-an-inscription.
 - Test-harness gotcha from the approach camera: after selecting a parallel at 1.35× zoom, the practice *node* can sit outside the viewport (the gold practice *edge* remains visible and clickable for humans). Playwright flows must hit the fit (◎) control before clicking the practice node.
 
+## The Voyage (2026-07-10): first-person pass
+
+AA, after feeling the world pass: "I want that kind of a world… like I'm flying around in space, in a galaxy, getting gravitationally pulled through different planets and stars… first-person perspective." Explicitly overrode the earlier recommendation against literal 3D — decision 8's presentation half amended (recorded in CLAUDE.md). Built hand-rolled on Canvas 2D (projection math, not WebGL) to stay inside the no-dependency rule and keep phone perf predictable.
+
+- **The bug worth remembering: release → instant re-capture.** Leaving orbit dropped the camera *inside* the body's capture radius, so the next frame's gravity check re-captured it and the chamber reopened forever. Surfaced only because the automated drive asserted chamber-detached between stops. Fix: an escape/lift-off phase after release (drift outward, that body's gravity suppressed until clear). Lesson: any "enter zone → event" system needs an explicit exit grace, or the exit is a no-op.
+- Autopilot look-easing must handle yaw wrap (normalize the delta to ±π before lerping) or the camera whips the long way round.
+- Canvas gradients are per-frame poison; pre-render glow sprites once per color and `drawImage` them. (The vignette + beam gradients still rebuild per frame — flagged to the review pass.)
+- Automation hook: `window.__voyageTravel(id)` + `__voyageEngine` are exposed from VoyageView for deterministic Playwright flights (screen-space clicking a moving 3D body is hopeless). Harmless in prod; remove if it ever bothers anyone.
+- Verified via Playwright (Chromium 1440×900 + 390×844 touch): intro → tap beacon → complaint chamber → sun → mechanism chamber → two worlds (incl. the rejected mirage) → gate → reveal → ArrivalOverlay with Thread → dismissed into the revealed figure; mobile beacon-tap chamber. Zero console errors. Still untested on device: drag feel, thermals on long sessions, iOS Safari canvas perf.
+
+### Adversarial review pass (7 lenses, 39 findings) and the fix batch
+
+A multi-agent review ran over the voyage: engine math, React integration, performance, mobile/touch, and a11y/reduced-motion lenses completed (39 findings); the locked-decisions-compliance and regression-sweep lenses, plus the per-finding adversarial verification stage, were cut short by usage limits — treat those as *not run*, not as clean. The findings were triaged by hand instead; fixes applied and the fixed build re-verified end-to-end (tsc clean, build clean, full Playwright voyage + session-arrival loops, zero console errors):
+
+- **Mode machine**: taps can no longer hijack the arrival pull-back (`pick`/`travelTo` guard `mode==='reveal'`); `release()` can't abort the reveal; `reveal()` clears `captured`; re-tapping the gate after arrival re-opens the practice instead of stranding the camera in a UI-less orbit.
+- **Input**: single-finger discipline (second finger ignored; pointerId checked on up; `pointercancel` never counts as a tap); drag "moved" is judged cumulatively from the press origin with touch-sized slop — slow contemplative pans no longer end in phantom travel; keys pressed on buttons/links no longer thrust the ship; frozen scroll impulses zeroed on capture/release.
+- **Perf**: the star/dust loops are allocation-free (per-frame trig hoist + shared scratch projection, offscreen skip) — was ~1,300 objects/frame; vignette gradient cached on resize; adaptive quality now drops the DPR cap to 1.2 (resolution is the real lever, not star count); painted radii clamped and bodies near-fade at the near plane instead of ballooning through the camera.
+- **Leaks/races**: unmount untints the shared ambience bed and removes the test hooks; `toggleAmbience` survives fast double-taps (sync flag flip + post-await check); switching sound on inside a chamber joins that room's voicing.
+- **A11y**: a visually-hidden travel nav gives keyboard/screen-reader users the full arc (the canvas itself is `aria-hidden`); chambers are dialogs (focus moves in, Escape releases); the hint region is permanently mounted so `aria-live` actually announces; the intro is keyboard-dismissable; reduced-motion users get "tap" hints instead of "fly".
+- **CSS**: HUD sits above the chamber and keeps safe-area padding; mobile HUD keeps corner positions; smart-zoom disabled on overlays without breaking chamber scroll.
+
+**Deferred, deliberately** (ranked for a future pass): per-frame gradients in the Christianity world + gate pillar (cache as sprites); near-plane clipping for threads (lines vanish when an endpoint goes behind the camera in orbit); orbit-entry position continuity; per-frame label string work; DPR-3 label softness; `arrive()`'s localStorage write living inside a setState updater (double-writes in dev StrictMode only); voyage↔bird's-eye state carry-over; focus restore on chamber close.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.

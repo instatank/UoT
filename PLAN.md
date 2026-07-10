@@ -13,6 +13,15 @@ A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice 
 - **SVG for all three maps**, rendered into a shared camera engine (`MapViewport`) rather than laid out flat — see below. No chart library — layouts are simple enough to compute by hand, and full control keeps the contemplative aesthetic.
 - **No new runtime dependencies.** Camera gestures are hand-rolled pointer events + rAF; voice is the browser's Web Speech API; ambience is generated WebAudio. `package.json` still lists only next/react/typescript.
 
+## The Voyage (first-person pass)
+
+AA's explicit direction (2026-07-10, amending decision 8's presentation half): not a bird's-eye map but *being in* the space — "flying around in a galaxy, getting gravitationally pulled through different planets and stars." Built as a fourth presentation of the same session state machine, at **`/voyage/[id]`** (Atlas doors open here; `◈ bird's-eye` in the HUD returns to the map lenses at `/session/[id]`, `✦ voyage` in the session header goes the other way — the two views hold separate in-memory state, an accepted sandbox limitation).
+
+- **`lib/voyage/engine.ts`** — a dependency-free 3D engine on Canvas 2D: perspective projection (yaw/pitch camera), a sky sphere of stars + near-field dust for motion parallax, free flight (drag to look; W/↑/space or scroll to thrust; gentle auto-cruise), **gravity** (active bodies bend your path; get close and you're captured into orbit), click/tap-to-travel autopilot with eased gaze, an **escape/lift-off** on release (without it gravity instantly re-captures the body you just left), soft world bounds, adaptive quality (thins the sky if frames sag), and the **reveal**: a pull-back flight after arrival that draws the visited path — beacon → sun → worlds → gate — into one golden figure.
+- **`lib/voyage/worlds.ts`** — procedural per-lineage world painters (symbolic geometry only, decision 7): Stoic square-in-circle, Buddhist eight-spoke wheel, Gītā flame petals, Christian light-beams, Sufi spiral of motes, Taoist watercourse, neuroscience axon filaments with travelling signals; the rejected parallel is an **ember mirage** — flickering, broken rings, a glitching double, no thread to the gate. Pre-rendered glow sprites (per-frame gradients are too slow).
+- **`components/VoyageView.tsx`** — React shell: builds the scene from SessionData (seeded PRNG layout), syncs the session arc into target states (beacon → sun active after complaint → worlds surface after mechanism → gate ignites when practice unlocks), opens full-screen **chambers** in orbit (lineage wash + watermark + passage/reading/folds + voice + re-voiced ambience), and runs arrival (gate capture → `arrive()` → reveal → ArrivalOverlay with the Thread). Reduced motion: no drift, instant travel cuts, static orbits.
+- The session arc is enforced exactly as in the maps: dim bodies are unclickable and exert no gravity until the arc surfaces them; the gate is sealed until an accepted parallel has landed.
+
 ## The world layer (immersive pass)
 
 The app now reads as one continuous world — a night sky the user dwells in — rather than screens:
@@ -112,10 +121,13 @@ lib/
   rand.ts                      — seeded PRNG (deterministic constellation/door layouts)
   voice.ts                     — Web Speech API wrapper + per-node speech text
   ambience.ts                  — generated WebAudio drone, toggleable + lineage re-voicing
+  voyage/engine.ts             — first-person Canvas-3D flight engine (no deps)
+  voyage/worlds.ts             — per-lineage procedural world painters + glow sprites
   flags.ts                     — doorsEnabled
   naming.ts                    — crisis floor, heuristic classifier, miss log (isomorphic)
   thread.ts                    — mintThread, wrapText, exportSvgAsPng
 components/
+  VoyageView.tsx               — voyage shell: scene, chambers, HUD, arrival
   Starfield.tsx                — canvas night sky (twinkle, parallax, rare meteor)
   LineageGlyph.tsx             — stroke-only lineage seals (HTML svg + in-SVG variants)
   AtlasHome.tsx                — the Atlas: sky, constellations, doors, door-pass transition
@@ -136,6 +148,7 @@ app/
   page.tsx                     — renders the Atlas (+ Door entry when flagged on)
   door/page.tsx                — the Door (flag-gated)
   api/naming/route.ts          — classification endpoint (the only server compute)
+  voyage/[id]/page.tsx         — the Voyage (SSG; Atlas doors open here)
   session/[id]/page.tsx        — statically generated session view
 ```
 
