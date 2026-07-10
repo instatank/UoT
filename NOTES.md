@@ -70,6 +70,15 @@ Lessons:
 - Doors: `align-items: flex-start` on the row, or varying complaint lengths stagger the arches.
 - Verified via Playwright (Chromium, 1440×900 + 390×844): atlas → door-pass → threshold → full loop to arrival in radial/descent, chambers for Buddhism/Neuroscience/Taoism/Hindu/rejected-ember, constellation appears on return, zero console errors, no horizontal overflow. Still device-untested: pinch feel, ambience re-voicing on phone speakers, starfield perf on old phones.
 
+## Branch unification (2026-07-10)
+
+The ratification pass (`claude/unity-truths-plan-review-i0cvea`) and the immersive world pass (this branch) had forked from the same base — the world pass was built without knowing the ratification work existed. Merged the ratification branch in here so this branch now carries both lines; nothing from either session was dropped. Calibration rule going forward: **check all remote branches before starting a pass** — `git log --all` would have surfaced the fork immediately.
+
+- Class collision resolved en route: the `/door` page container and the Atlas's arched session cards both used `.door`. The page container is now `.door-page` (page + CSS); the Atlas card keeps `.door`.
+- Arrival now composes both lines: star-birth → payoff → one practice (+ "another way" fold) → the Thread card → "a new star now stands in your sky."
+- The Door's entry link lives on the Atlas (flag-gated, `.atlas-door-entry`), styled as a threshold-without-an-inscription.
+- Test-harness gotcha from the approach camera: after selecting a parallel at 1.35× zoom, the practice *node* can sit outside the viewport (the gold practice *edge* remains visible and clickable for humans). Playwright flows must hit the fit (◎) control before clicking the practice node.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.
