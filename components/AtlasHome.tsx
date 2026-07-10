@@ -15,6 +15,7 @@ import type { SessionData } from '@/lib/types';
 import { sessions } from '@/lib/sessions';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
 import { loadSessionRecords, type ConstellationRecord } from '@/lib/constellation';
+import { doorsEnabled } from '@/lib/flags';
 import { mulberry32, seedFrom } from '@/lib/rand';
 import Starfield from './Starfield';
 
@@ -254,6 +255,17 @@ export default function AtlasHome() {
             </Link>
           ))}
         </div>
+
+        {doorsEnabled && (
+          <Link href="/door" className="atlas-door-entry">
+            <span className="pill gold">the Door</span>
+            <span className="atlas-door-line">Or say it in your own words →</span>
+            <span className="atlas-door-sub">
+              the ratified cold start (decision 11) — free text or the ten pains, crisis off-ramp
+              included · Phase 3 trial
+            </span>
+          </Link>
+        )}
 
         <footer className="atlas-foot">
           <p className="sky-note">

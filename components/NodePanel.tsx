@@ -6,41 +6,13 @@ import type { SessionState } from '@/lib/state';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
 import { nodeSpeech, useVoice, voiceSupported } from '@/lib/voice';
 import LineageGlyph from './LineageGlyph';
+import Fold from './Fold';
 
 interface Props {
   session: SessionData;
   state: SessionState;
   practiceUnlocked: boolean;
   onSelect: (ref: NodeRef) => void;
-}
-
-// Progressive disclosure: long passages stay, commentary folds. Less on
-// screen, everything within one tap.
-function Fold({
-  label,
-  children,
-  defaultOpen = false,
-  tone,
-}: {
-  label: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  tone?: 'ember';
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className={`fold${open ? ' open' : ''}${tone ? ` ${tone}` : ''}`}>
-      <button className="fold-head" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span>{label}</span>
-        <span className="chev" aria-hidden>
-          ▾
-        </span>
-      </button>
-      <div className="fold-body">
-        <div className="fold-inner">{children}</div>
-      </div>
-    </div>
-  );
 }
 
 function ListenPill({ session, refNode }: { session: SessionData; refNode: NodeRef }) {
@@ -206,6 +178,21 @@ export default function NodePanel({ session, state, practiceUnlocked, onSelect }
           <li key={i}>{s}</li>
         ))}
       </ol>
+      {(session.alternatePractices?.length ?? 0) > 0 && (
+        <Fold label="another way">
+          {session.alternatePractices!.slice(0, 2).map((alt) => (
+            <div key={alt.id} className="alt-practice">
+              <h4>{alt.name}</h4>
+              {alt.durationMinutes && <p className="duration">~{alt.durationMinutes} min</p>}
+              <ol className="steps">
+                {alt.steps.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </Fold>
+      )}
     </div>
   );
 }

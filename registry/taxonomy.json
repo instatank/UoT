@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "note": "Empty by design until the Admission Gauntlet runs (Phase 1). Candidates awaiting AA's kill-pass live in registry/drafts/. Nothing enters mechanisms[] without passing the gauntlet — CLAUDE.md locked decision 13.",
+  "painCategories": [
+    "Anxiety",
+    "Burnout",
+    "Meaning Crisis",
+    "Identity Confusion",
+    "Decision Paralysis",
+    "Relationship Suffering",
+    "Anger and Reactivity",
+    "Grief and Loss",
+    "Shame and Self-Judgment",
+    "Disconnection"
+  ],
+  "lineages": [
+    "Stoicism",
+    "Buddhism",
+    "Hindu/Gītā",
+    "Christianity",
+    "Sufism",
+    "Taoism",
+    "Neuroscience/Psychology"
+  ],
+  "mechanisms": []
+}

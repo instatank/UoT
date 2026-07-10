@@ -69,7 +69,10 @@ export interface SessionData {
   mechanism: Mechanism;
   parallels: Parallel[];
   payoff: string;
-  practice: Practice;
+  practice: Practice; // the default — arrival presents exactly this one
+  // ≤2 alternates behind arrival's closed "another way" fold (locked
+  // decision 12: 1:many in data, one-practice arrival in experience)
+  alternatePractices?: Practice[];
 }
 
 // A reference to a node on the map — the shared currency between geometries,

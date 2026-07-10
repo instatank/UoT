@@ -339,6 +339,7 @@ export default function SessionView({ session }: { session: SessionData }) {
       {state.arrived && overlayOpen && (
         <ArrivalOverlay
           session={session}
+          visited={state.visitedParallels}
           onDismiss={() => {
             setOverlayOpen(false);
             // step back and see the whole of what was dug
