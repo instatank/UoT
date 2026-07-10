@@ -1,14 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import type { NodeRef, SessionData } from '@/lib/types';
 import { useSessionState } from '@/lib/state';
-import { toggleAmbience } from '@/lib/ambience';
+import { tintAmbience, toggleAmbience } from '@/lib/ambience';
+import { lineageAtmosphere, rejectedAtmosphere, type LineageAtmosphere } from '@/lib/lineage';
 import MapViewport, { MapViewportHandle } from './MapViewport';
 import { CueTarget, isMobile, useCompact } from './geometries/common';
 import NodePanel from './NodePanel';
 import ArrivalOverlay from './ArrivalOverlay';
+import Starfield from './Starfield';
 import RadialGeometry, { radialLayout } from './geometries/RadialGeometry';
 import RiverGeometry, { riverLayout } from './geometries/RiverGeometry';
 import DescentGeometry, { descentLayout } from './geometries/DescentGeometry';
@@ -16,10 +19,11 @@ import DescentGeometry, { descentLayout } from './geometries/DescentGeometry';
 type GeometryKind = 'radial' | 'river' | 'descent';
 type SheetPos = 'peek' | 'half' | 'full';
 
-const GEOMETRIES: { kind: GeometryKind; label: string }[] = [
-  { kind: 'radial', label: 'Radial' },
-  { kind: 'river', label: 'River' },
-  { kind: 'descent', label: 'Descent' },
+// three lenses on the same descent — glyphs, not tabs
+const GEOMETRIES: { kind: GeometryKind; label: string; glyph: string }[] = [
+  { kind: 'radial', label: 'Radial', glyph: '◎' },
+  { kind: 'river', label: 'River', glyph: '≈' },
+  { kind: 'descent', label: 'Descent', glyph: '≣' },
 ];
 
 const PEEK_VISIBLE = 92; // px of sheet visible when peeked
@@ -39,11 +43,53 @@ export default function SessionView({ session }: { session: SessionData }) {
   const [dragging, setDragging] = useState(false);
   const [ambience, setAmbience] = useState(false);
   const [hintGone, setHintGone] = useState(false);
+  // crossing the threshold — a brief moment at the surface before the map
+  const [threshold, setThreshold] = useState<'on' | 'leaving' | null>('on');
   const vpRef = useRef<MapViewportHandle>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const insetRef = useRef(0);
   const compact = useCompact();
   const { state, practiceUnlocked, select, arrive } = useSessionState(session);
+
+  // the threshold lifts on its own, or on a tap; reduced motion skips it
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setThreshold(null);
+      return;
+    }
+    const t1 = window.setTimeout(() => setThreshold((s) => (s === 'on' ? 'leaving' : s)), 2600);
+    const t2 = window.setTimeout(() => setThreshold(null), 3400);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, []);
+
+  const liftThreshold = () => {
+    setThreshold((s) => (s === 'on' ? 'leaving' : s));
+    window.setTimeout(() => setThreshold(null), 800);
+  };
+
+  // the atmosphere of the selected node — each lineage has its own sensibility
+  const atmosphere: LineageAtmosphere | null = useMemo(() => {
+    const sel = state.selected;
+    if (!sel) return null;
+    if (sel.kind === 'parallel') {
+      const p = session.parallels.find((x) => x.id === sel.id);
+      if (!p) return null;
+      return p.status === 'rejected' ? rejectedAtmosphere : lineageAtmosphere[p.lineage];
+    }
+    if (sel.kind === 'deepening') {
+      const p = session.parallels.find((x) => x.id === sel.parallelId);
+      return p ? lineageAtmosphere[p.lineage] : null;
+    }
+    return null;
+  }, [state.selected, session]);
+
+  // the sound bed follows the room you're standing in (no-op when it's off)
+  useEffect(() => {
+    tintAmbience(atmosphere);
+  }, [atmosphere]);
 
   const layout = useMemo(
     () =>
@@ -88,12 +134,16 @@ export default function SessionView({ session }: { session: SessionData }) {
     []
   );
 
-  // keep the camera on the selection, in the band the sheet leaves visible
+  // keep the camera on the selection — gravitate toward what you choose.
+  // Mobile centers in the band the sheet leaves visible; desktop glides too.
   useEffect(() => {
     insetRef.current = computeInset(sheetPos, state.selected !== null);
-    if (!state.selected || !isMobile() || sheetPos === 'full') return;
+    if (!state.selected) return;
+    if (isMobile() && sheetPos === 'full') return;
     const p = layout.pos(state.selected);
-    const raf = requestAnimationFrame(() => vpRef.current?.focusOn(p.x, p.y));
+    const raf = requestAnimationFrame(() =>
+      isMobile() ? vpRef.current?.focusOn(p.x, p.y) : vpRef.current?.approach(p.x, p.y)
+    );
     return () => cancelAnimationFrame(raf);
   }, [state.selected, sheetPos, layout, computeInset]);
 
@@ -179,7 +229,17 @@ export default function SessionView({ session }: { session: SessionData }) {
   const sheetState: SheetPos | 'hidden' = state.selected ? sheetPos : 'hidden';
 
   return (
-    <div className="session-shell" data-sheet={sheetState}>
+    <div
+      className="session-shell"
+      data-sheet={sheetState}
+      style={
+        {
+          '--sel-wash': atmosphere?.wash ?? 'rgba(0,0,0,0)',
+          '--sel-on': atmosphere ? 1 : 0,
+          '--aurora': atmosphere?.aurora ?? 'rgba(62, 76, 112, 0.16)',
+        } as CSSProperties
+      }
+    >
       <header className="session-header">
         <Link href="/" className="back">
           ← sessions
@@ -202,6 +262,9 @@ export default function SessionView({ session }: { session: SessionData }) {
               className={geometry === g.kind ? 'active' : ''}
               onClick={() => setGeometry(g.kind)}
             >
+              <span className="geo-glyph" aria-hidden>
+                {g.glyph}
+              </span>
               {g.label}
             </button>
           ))}
@@ -210,6 +273,7 @@ export default function SessionView({ session }: { session: SessionData }) {
 
       <div className="session-body">
         <div className="map-stage">
+          <Starfield density={0.55} parallax={0} dim={0.75} meteorEvery={80} />
           <MapViewport
             key={geometry}
             ref={vpRef}
@@ -273,7 +337,26 @@ export default function SessionView({ session }: { session: SessionData }) {
       </div>
 
       {state.arrived && overlayOpen && (
-        <ArrivalOverlay session={session} onDismiss={() => setOverlayOpen(false)} />
+        <ArrivalOverlay
+          session={session}
+          onDismiss={() => {
+            setOverlayOpen(false);
+            // step back and see the whole of what was dug
+            vpRef.current?.fit(900);
+          }}
+        />
+      )}
+
+      {threshold && (
+        <div
+          className={`threshold${threshold === 'leaving' ? ' leaving' : ''}`}
+          onClick={liftThreshold}
+          aria-hidden
+        >
+          <span className="eyebrow t1">{session.painCategory} · the surface</span>
+          <p className="threshold-quote t2">“{session.surfaceComplaint}”</p>
+          <span className="threshold-hint t3">something is running underneath — descend</span>
+        </div>
       )}
     </div>
   );

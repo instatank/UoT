@@ -25,8 +25,30 @@ export default function ArrivalOverlay({
   return (
     <div className="arrival-backdrop">
       <div className="arrival">
+        {/* a star is born — the practice reached, set into the sky */}
+        <div className="starbirth" aria-hidden>
+          <svg viewBox="0 0 120 120">
+            <g className="rays">
+              {Array.from({ length: 8 }, (_, i) => {
+                const a = (Math.PI / 4) * i + Math.PI / 8;
+                return (
+                  <line
+                    key={i}
+                    x1={60 + Math.cos(a) * 16}
+                    y1={60 + Math.sin(a) * 16}
+                    x2={60 + Math.cos(a) * (i % 2 ? 34 : 46)}
+                    y2={60 + Math.sin(a) * (i % 2 ? 34 : 46)}
+                  />
+                );
+              })}
+            </g>
+            <circle className="birth-halo" cx={60} cy={60} r={26} />
+            <circle className="birth-halo late" cx={60} cy={60} r={26} />
+            <circle className="birth-core" cx={60} cy={60} r={5} />
+          </svg>
+        </div>
         <div className="stage s1">
-          <span className="eyebrow">Arrival</span>
+          <span className="eyebrow">Arrival — a star is set</span>
           {voiceOk && (
             <button
               className={`pill listen${speaking ? ' on' : ''}`}
@@ -49,9 +71,9 @@ export default function ArrivalOverlay({
           </ol>
         </div>
         <div className="arrival-foot stage s5">
-          <span className="recorded">Recorded to the constellation.</span>
+          <span className="recorded">A new star now stands in your sky.</span>
           <button onClick={dismiss}>sit with the map</button>
-          <Link href="/">all sessions</Link>
+          <Link href="/">look up at the sky</Link>
         </div>
       </div>
     </div>

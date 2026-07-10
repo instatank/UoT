@@ -16,6 +16,9 @@ import {
 
 export interface MapViewportHandle {
   focusOn: (x: number, y: number, opts?: { k?: number; ms?: number }) => void;
+  /** Gravitate toward a point: centers it and eases the zoom up to a
+   * reading distance if the camera is still at overview scale. */
+  approach: (x: number, y: number) => void;
   fit: (ms?: number) => void;
   zoomBy: (f: number) => void;
 }
@@ -153,6 +156,16 @@ const MapViewport = forwardRef<MapViewportHandle, Props>(function MapViewport(
     [animateTo, centerTarget, W, H, fitK]
   );
 
+  const approach = useCallback(
+    (cx: number, cy: number) => {
+      // at overview scale the clamp pins the map to center and focusing is a
+      // no-op — drift in a little, so selection feels like moving closer
+      const k = Math.max(view.current.k, fitK() * 1.35);
+      animateTo(centerTarget(cx, cy, k), 850);
+    },
+    [animateTo, centerTarget, fitK]
+  );
+
   const zoomAt = useCallback(
     (px: number, py: number, f: number, ms = 0) => {
       const r = wrapRef.current!.getBoundingClientRect();
@@ -181,7 +194,12 @@ const MapViewport = forwardRef<MapViewportHandle, Props>(function MapViewport(
     [zoomAt]
   );
 
-  useImperativeHandle(ref, () => ({ focusOn, fit, zoomBy }), [focusOn, fit, zoomBy]);
+  useImperativeHandle(ref, () => ({ focusOn, approach, fit, zoomBy }), [
+    focusOn,
+    approach,
+    fit,
+    zoomBy,
+  ]);
 
   const markInteracted = () => {
     if (!interacted.current) {
@@ -394,6 +412,10 @@ const MapViewport = forwardRef<MapViewportHandle, Props>(function MapViewport(
               <feMergeNode in="b" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
+          </filter>
+          {/* pure blur — node auras */}
+          <filter id="softBlur" x="-120%" y="-120%" width="340%" height="340%">
+            <feGaussianBlur stdDeviation="6" />
           </filter>
         </defs>
         <g ref={gRef}>{children}</g>

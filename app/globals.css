@@ -149,108 +149,317 @@ button.pill:hover {
   min-height: 44px;
 }
 
-/* ---------- home / session picker ---------- */
+/* ---------- the Atlas — night sky, doors, constellations ---------- */
 
-.home {
-  max-width: 720px;
+.starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.atlas {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* a faint band of horizon light — the ground the doors stand on */
+.sky::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 34vh;
+  background: linear-gradient(to top, rgba(24, 30, 46, 0.55), transparent);
+  pointer-events: none;
+}
+
+.constellation {
+  position: absolute;
+  overflow: visible;
+  animation: surface 2.4s ease both;
+}
+
+.cstar {
+  animation: cstarTwinkle 4.8s ease-in-out infinite;
+}
+
+.cstar.bright {
+  filter: drop-shadow(0 0 5px rgba(232, 220, 176, 0.75));
+}
+
+@keyframes cstarTwinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.clabel {
+  font-family: var(--serif);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  fill: rgba(89, 98, 117, 0.55);
+}
+
+.atlas-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1020px;
   margin: 0 auto;
-  padding: 11vh 24px 8vh;
+  padding: 10vh 28px 7vh;
+  transition: opacity 0.8s ease, transform 0.8s ease;
 }
 
-.home > .eyebrow,
-.home h1,
-.home .sub {
-  animation: riseIn 0.9s ease both;
+.atlas-content.entering {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
 }
 
-.home h1 {
+.atlas-head {
+  text-align: center;
+}
+
+.atlas-head .eyebrow,
+.atlas-head h1,
+.atlas-head .sub {
+  animation: riseIn 1s ease both;
+}
+
+.atlas-head h1 {
   font-family: var(--serif);
   font-weight: 400;
-  font-size: 34px;
-  letter-spacing: 0.01em;
-  margin: 14px 0 10px;
-  animation-delay: 0.08s;
+  font-size: 40px;
+  letter-spacing: 0.015em;
+  margin: 16px 0 12px;
+  animation-delay: 0.1s;
+  text-shadow: 0 0 34px rgba(62, 76, 112, 0.5);
 }
 
-.home .sub {
+.atlas-head .sub {
   color: var(--text-muted);
-  max-width: 54ch;
-  margin-bottom: 44px;
-  animation-delay: 0.16s;
+  max-width: 52ch;
+  margin: 0 auto;
+  animation-delay: 0.2s;
 }
 
-.session-list {
+/* ----- doors ----- */
+
+.doors {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px 36px;
+  margin-top: 8vh;
+}
+
+.door {
+  width: 246px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.session-card {
-  display: block;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 20px 22px;
-  background: rgba(15, 19, 28, 0.55);
-  transition: border-color 0.4s ease, background 0.4s ease, transform 0.4s ease;
-  animation: riseIn 0.9s ease both;
-}
-
-.session-card:nth-child(1) {
-  animation-delay: 0.22s;
-}
-.session-card:nth-child(2) {
-  animation-delay: 0.3s;
-}
-.session-card:nth-child(3) {
-  animation-delay: 0.38s;
-}
-
-.session-card:hover {
-  border-color: #2b3550;
-  background: rgba(19, 24, 36, 0.75);
-  transform: translateY(-2px);
-}
-
-.session-card:active {
-  transform: translateY(0);
-}
-
-.card-top {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  text-align: center;
+  padding: 14px 12px 18px;
+  border-radius: 16px;
+  animation: riseIn 1.2s ease both;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.6s ease;
 }
 
-.lineage-dots {
-  display: inline-flex;
-  gap: 7px;
+.door:hover {
+  transform: translateY(-7px);
+  background: rgba(15, 19, 28, 0.35);
 }
 
-.lineage-dots .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid;
+.door:focus-visible {
+  outline: 1px solid var(--gold-dim);
+  outline-offset: 4px;
+}
+
+.door-cat {
+  font-size: 10.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 10px;
+  transition: color 0.5s;
+}
+
+.door:hover .door-cat {
+  color: var(--gold);
+}
+
+.door-arch {
+  width: 176px;
+  height: 246px;
+  display: block;
+  overflow: visible;
+  transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* the chosen door swings — you are actually going through */
+.door.opening .door-arch {
+  transform: perspective(720px) rotateY(-15deg) translateZ(10px);
+  transform-origin: 15% center;
+}
+
+.door.opening .door-light {
+  opacity: 1;
+}
+
+.door.opening .door-cat {
+  color: var(--gold);
+}
+
+.arch-line {
+  stroke: #3a4662;
+  stroke-width: 1.1;
+  transition: stroke 0.6s ease;
+}
+
+.arch-line.inner {
+  stroke: #242d42;
+}
+
+.door:hover .arch-line {
+  stroke: #58678f;
+}
+
+.door-light {
+  opacity: 0.55;
+  transition: opacity 0.7s ease;
+}
+
+.door:hover .door-light {
+  opacity: 1;
+}
+
+.door-stars {
+  transition: opacity 0.6s ease;
   opacity: 0.85;
 }
 
-.lineage-dots .dot.rejected {
-  border-style: dashed;
+.door:hover .door-stars {
+  opacity: 1;
 }
 
-.session-card .complaint {
+.door-complaint {
   font-family: var(--serif);
-  font-size: 19px;
-  margin-top: 12px;
+  font-size: 16.5px;
+  line-height: 1.45;
   color: var(--text);
+  margin-top: 16px;
+  min-height: 3.6em;
 }
 
-.card-sub {
-  margin-top: 8px;
-  font-size: 12px;
+.door-enter {
+  margin-top: 10px;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.door:hover .door-enter,
+.door:focus-visible .door-enter {
+  opacity: 0.9;
+  transform: translateY(0);
+}
+
+/* passing through — light floods from the chosen door, then night */
+.door-pass {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #06080d;
+  opacity: 0;
+  animation: passVeil 0.9s ease forwards;
+}
+
+@keyframes passVeil {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.door-pass::before {
+  content: '';
+  position: absolute;
+  left: var(--dx, 50%);
+  top: var(--dy, 50%);
+  width: 44vmax;
+  height: 44vmax;
+  margin: -22vmax 0 0 -22vmax;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(240, 230, 196, 0.55),
+    rgba(240, 230, 196, 0.1) 45%,
+    transparent 70%
+  );
+  transform: scale(0.08);
+  opacity: 0;
+  animation: passLight 0.9s cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+}
+
+@keyframes passLight {
+  0% {
+    transform: scale(0.08);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.atlas-foot {
+  margin-top: 9vh;
+  text-align: center;
+}
+
+.sky-note {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.fine-print {
+  margin-top: 14px;
   color: var(--faint);
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  line-height: 1.7;
+  max-width: 58ch;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .chip {
@@ -262,13 +471,6 @@ button.pill:hover {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 10px;
-}
-
-.home-foot {
-  margin-top: 56px;
-  color: var(--faint);
-  font-size: 12.5px;
-  line-height: 1.7;
 }
 
 /* ---------- session shell ---------- */
@@ -287,6 +489,10 @@ button.pill:hover {
   padding: 12px 20px;
   border-bottom: 1px solid var(--line-soft);
   flex-shrink: 0;
+  background: rgba(10, 13, 19, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 5;
 }
 
 .session-header .back {
@@ -331,6 +537,7 @@ button.pill:hover {
   box-shadow: 0 0 14px rgba(216, 201, 138, 0.12);
 }
 
+/* three lenses on the same descent — an instrument, not tabs */
 .geo-switch {
   display: flex;
   gap: 2px;
@@ -338,24 +545,37 @@ button.pill:hover {
   border-radius: 999px;
   padding: 3px;
   flex-shrink: 0;
+  background: rgba(12, 16, 24, 0.5);
 }
 
 .geo-switch button {
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  padding: 6px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 6px 15px;
   border-radius: 999px;
-  transition: color 0.3s, background 0.3s;
+  transition: color 0.35s, background 0.35s, text-shadow 0.35s;
+}
+
+.geo-switch .geo-glyph {
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.8;
 }
 
 .geo-switch button:hover {
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 .geo-switch button.active {
-  color: var(--text);
-  background: #1a2130;
+  color: var(--gold);
+  background: rgba(216, 201, 138, 0.07);
+  text-shadow: 0 0 12px rgba(216, 201, 138, 0.35);
 }
 
 .session-body {
@@ -375,14 +595,20 @@ button.pill:hover {
   transition: filter 0.55s ease, transform 0.55s ease;
 }
 
-/* quiet aurora behind the map — atmosphere, not decoration */
+/* quiet aurora behind the map — atmosphere, not decoration. It takes the
+   color of whatever lineage you're standing in (--aurora, set by SessionView). */
 .map-stage::before {
   content: '';
   position: absolute;
   inset: -20%;
-  background: radial-gradient(55% 45% at 50% 40%, rgba(62, 76, 112, 0.16), transparent 70%);
+  background: radial-gradient(
+    55% 45% at 50% 40%,
+    var(--aurora, rgba(62, 76, 112, 0.16)),
+    transparent 70%
+  );
   pointer-events: none;
   animation: aurora 46s ease-in-out infinite alternate;
+  z-index: 1;
 }
 
 @keyframes aurora {
@@ -399,6 +625,7 @@ button.pill:hover {
   inset: 0;
   opacity: 0;
   transition: opacity 0.6s ease;
+  z-index: 2; /* above the starfield canvas and the aurora */
 }
 
 .map-viewport.ready {
@@ -558,6 +785,80 @@ button.pill:hover {
   }
 }
 
+/* the practice gate — a second ring that turns once the way is open */
+.gate-ring {
+  pointer-events: none;
+}
+
+.gate-ring.live {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: edgeTurn 60s linear infinite;
+  filter: url(#edgeGlow);
+}
+
+/* a pulse of light traveling the thread — the map is alive */
+.flowline {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 0.035 0.965;
+  stroke-dashoffset: 1;
+  opacity: 0.55;
+  filter: url(#edgeGlow);
+  animation: flowMove 5.4s linear infinite;
+  pointer-events: none;
+}
+
+.flowline.slow {
+  animation-duration: 10s;
+  stroke-width: 2;
+  opacity: 0.45;
+}
+
+@keyframes flowMove {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* the thread you're holding lights up */
+.edge.lit,
+.stream.lit {
+  stroke-opacity: 0.9;
+  opacity: 0.9;
+  filter: url(#edgeGlow);
+}
+
+/* one-shot reveal — the node surfaces with a ripple */
+.ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rippleOut 1.5s cubic-bezier(0.2, 0.6, 0.35, 1) both;
+  pointer-events: none;
+}
+
+@keyframes rippleOut {
+  0% {
+    transform: scale(0.35);
+    stroke-opacity: 0.7;
+    stroke-width: 1.4;
+  }
+  100% {
+    transform: scale(2.2);
+    stroke-opacity: 0;
+    stroke-width: 0.4;
+  }
+}
+
+.aura {
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+
 .edge {
   stroke: #232c3f;
   stroke-width: 1;
@@ -612,14 +913,79 @@ button.pill:hover {
 
 .sheet {
   z-index: 10;
+  position: relative;
+}
+
+/* the reading surface takes on the atmosphere of the selected lineage */
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--sel-wash, transparent), transparent 62%);
+  opacity: var(--sel-on, 0);
+  transition: opacity 1s ease;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
 }
 
 .sheet-grip {
   display: none;
 }
 
-.node-detail {
-  animation: riseIn 0.5s ease both;
+.sheet-body {
+  position: relative;
+  z-index: 1;
+  overflow-x: hidden; /* the chamber watermark bleeds off the edge by design */
+}
+
+/* insight arrives in stages, not as a wall */
+.node-detail > * {
+  animation: riseIn 0.6s ease both;
+}
+
+.node-detail > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.node-detail > *:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.node-detail > *:nth-child(4) {
+  animation-delay: 0.26s;
+}
+.node-detail > *:nth-child(5) {
+  animation-delay: 0.36s;
+}
+.node-detail > *:nth-child(6) {
+  animation-delay: 0.46s;
+}
+.node-detail > *:nth-child(n + 7) {
+  animation-delay: 0.55s;
+}
+
+/* the chamber — the lineage's seal watermarks the room */
+.node-detail.chamber {
+  position: relative;
+}
+
+.chamber-mark {
+  position: absolute;
+  top: -30px;
+  right: -60px;
+  opacity: 0.05;
+  pointer-events: none;
+  animation: chamberIn 2.2s ease both !important;
+}
+
+@keyframes chamberIn {
+  from {
+    opacity: 0;
+    transform: rotate(-8deg) scale(0.92);
+  }
+  to {
+    opacity: 0.05;
+    transform: rotate(0deg) scale(1);
+  }
 }
 
 .pill-row {
@@ -787,6 +1153,52 @@ ol.steps li::before {
   }
 }
 
+/* ---------- the threshold — a breath at the surface before the map ---------- */
+
+.threshold {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 32px;
+  background: radial-gradient(90% 70% at 50% 42%, #0b0f17 0%, #06080d 78%);
+  cursor: pointer;
+  transition: opacity 0.8s ease;
+}
+
+.threshold.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.threshold .t1 {
+  animation: surface 1.2s ease 0.15s both;
+  color: var(--faint);
+}
+
+.threshold-quote {
+  font-family: var(--serif);
+  font-size: clamp(22px, 4.2vw, 34px);
+  line-height: 1.45;
+  color: #e3e8f0;
+  max-width: 22ch;
+  animation: riseIn 1.4s ease 0.5s both;
+  text-shadow: 0 0 40px rgba(62, 76, 112, 0.55);
+}
+
+.threshold-hint {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  animation: surface 1.6s ease 1.3s both;
+}
+
 /* ---------- arrival overlay ---------- */
 
 .arrival-backdrop {
@@ -812,6 +1224,92 @@ ol.steps li::before {
   padding: 42px 46px;
   margin: 20px;
   box-shadow: 0 0 80px rgba(216, 201, 138, 0.05);
+}
+
+/* the star-birth — practice reached, a light set into the sky */
+.starbirth {
+  display: flex;
+  justify-content: center;
+  margin: -8px 0 4px;
+}
+
+.starbirth svg {
+  width: 116px;
+  height: 116px;
+  overflow: visible;
+}
+
+.starbirth .birth-core {
+  fill: #e8dcb0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: coreIgnite 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+  filter: drop-shadow(0 0 10px rgba(232, 220, 176, 0.9));
+}
+
+@keyframes coreIgnite {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.7);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.starbirth .birth-halo {
+  fill: none;
+  stroke: #e8dcb0;
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: haloOut 2.6s ease-out 0.5s both;
+}
+
+.starbirth .birth-halo.late {
+  animation-delay: 1.1s;
+}
+
+@keyframes haloOut {
+  0% {
+    transform: scale(0.2);
+    stroke-opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.1);
+    stroke-opacity: 0;
+  }
+}
+
+.starbirth .rays line {
+  stroke: #e8dcb0;
+  stroke-width: 1;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: raysIn 2.2s ease 0.7s both;
+}
+
+.starbirth .rays {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: edgeTurn 160s linear infinite;
+}
+
+@keyframes raysIn {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0.4;
+  }
 }
 
 .arrival .stage {
@@ -1093,15 +1591,36 @@ ol.steps li::before {
     min-height: 44px;
   }
 
-  .home {
-    padding: 8vh 20px 10vh;
+  .atlas-content {
+    padding: 7vh 20px 9vh;
     padding-left: calc(20px + env(safe-area-inset-left));
     padding-right: calc(20px + env(safe-area-inset-right));
-    padding-bottom: calc(10vh + env(safe-area-inset-bottom));
+    padding-bottom: calc(9vh + env(safe-area-inset-bottom));
   }
 
-  .home h1 {
-    font-size: 29px;
+  .atlas-head h1 {
+    font-size: 30px;
+  }
+
+  .doors {
+    gap: 8px 18px;
+    margin-top: 6vh;
+  }
+
+  .door {
+    width: min(300px, 86vw);
+    padding-bottom: 26px;
+  }
+
+  /* constellations keep to the top band, clear of the title */
+  .constellation {
+    transform: scale(0.85);
+    transform-origin: top left;
+  }
+
+  .threshold {
+    padding: 28px;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
   }
 }
 
@@ -1114,5 +1633,14 @@ ol.steps li::before {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* moving light has no still equivalent — remove it rather than freeze it */
+  .flowline {
+    display: none;
+  }
+
+  .ripple {
+    display: none;
   }
 }

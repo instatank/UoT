@@ -3,7 +3,7 @@
 import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapLayout, MapNode } from './common';
+import { Flow, GeometryProps, MapLayout, MapNode } from './common';
 
 const COMPLAINT_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
@@ -132,23 +132,41 @@ export default function DescentGeometry({
 
       {/* the shaft */}
       {state.complaintTouched && (
-        <line
-          className="edge draw"
-          pathLength={1}
-          x1={L.SHAFT_X}
-          y1={L.COMPLAINT_Y + 30}
-          x2={L.SHAFT_X}
-          y2={L.MECH_Y - 22}
-        />
+        <>
+          <line
+            className="edge draw"
+            pathLength={1}
+            x1={L.SHAFT_X}
+            y1={L.COMPLAINT_Y + 30}
+            x2={L.SHAFT_X}
+            y2={L.MECH_Y - 22}
+          />
+          {state.mechanismRevealed && (
+            <Flow
+              d={`M ${L.SHAFT_X} ${L.COMPLAINT_Y + 30} L ${L.SHAFT_X} ${L.MECH_Y - 22}`}
+              color={COMPLAINT_COLOR}
+            />
+          )}
+        </>
       )}
       {state.mechanismRevealed && (
-        <line
-          className="edge-faint enter"
-          x1={L.SHAFT_X}
-          y1={L.MECH_Y + 22}
-          x2={L.SHAFT_X}
-          y2={PRACTICE_Y - 24}
-        />
+        <>
+          <line
+            className="edge-faint enter"
+            x1={L.SHAFT_X}
+            y1={L.MECH_Y + 22}
+            x2={L.SHAFT_X}
+            y2={PRACTICE_Y - 24}
+          />
+          {practiceUnlocked && (
+            // light finds the way down to bedrock once the dig has earned it
+            <Flow
+              d={`M ${L.SHAFT_X} ${L.MECH_Y + 22} L ${L.SHAFT_X} ${PRACTICE_Y - 24}`}
+              color={GOLD}
+              slow
+            />
+          )}
+        </>
       )}
 
       {/* branches from the shaft to each parallel */}
@@ -157,17 +175,28 @@ export default function DescentGeometry({
           const { x, y } = positions[i];
           const dir = x > L.SHAFT_X ? -1 : 1;
           const rejected = p.status === 'rejected';
+          const color = rejected ? rejectedColor : lineageColor[p.lineage];
+          const lit = sameNode(state.selected, { kind: 'parallel', id: p.id });
           return (
-            <line
-              key={p.id}
-              className={rejected ? 'edge enter' : 'edge draw'}
-              pathLength={rejected ? undefined : 1}
-              x1={L.SHAFT_X}
-              y1={y}
-              x2={x + dir * 15}
-              y2={y}
-              strokeDasharray={rejected ? '3 5' : undefined}
-            />
+            <g key={p.id}>
+              <line
+                className={`${rejected ? 'edge enter' : 'edge draw'}${lit ? ' lit' : ''}`}
+                style={lit ? { stroke: color } : undefined}
+                pathLength={rejected ? undefined : 1}
+                x1={L.SHAFT_X}
+                y1={y}
+                x2={x + dir * 15}
+                y2={y}
+                strokeDasharray={rejected ? '3 5' : undefined}
+              />
+              {!rejected && (
+                <Flow
+                  d={`M ${L.SHAFT_X} ${y} L ${x + dir * 15} ${y}`}
+                  color={color}
+                  delay={0.9 + i * 1.15}
+                />
+              )}
+            </g>
           );
         })}
 
@@ -218,6 +247,7 @@ export default function DescentGeometry({
               sublabel={p.lineage}
               color={rejected ? rejectedColor : lineageColor[p.lineage]}
               rejected={rejected}
+              glyph={p.lineage}
               visited={state.visitedParallels.includes(p.id)}
               selected={sameNode(state.selected, { kind: 'parallel', id: p.id })}
               labelPos={rejected && !compact ? 'right' : 'below'}
@@ -264,6 +294,7 @@ export default function DescentGeometry({
         label={session.practice.name}
         sublabel={practiceUnlocked ? 'practice — dig through' : 'practice'}
         color={GOLD}
+        gate
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}

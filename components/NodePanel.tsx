@@ -5,6 +5,7 @@ import type { NodeRef, SessionData } from '@/lib/types';
 import type { SessionState } from '@/lib/state';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
 import { nodeSpeech, useVoice, voiceSupported } from '@/lib/voice';
+import LineageGlyph from './LineageGlyph';
 
 interface Props {
   session: SessionData;
@@ -119,9 +120,14 @@ export default function NodePanel({ session, state, practiceUnlocked, onSelect }
     const color = rejected ? rejectedColor : lineageColor[p.lineage];
     const cite = [p.source.author, p.source.work, p.source.locus].filter(Boolean).join(', ');
     return (
-      <div className="node-detail" key={p.id}>
+      <div className="node-detail chamber" key={p.id}>
+        {/* the room you're standing in — the lineage's seal, faint and large */}
+        <div className="chamber-mark" aria-hidden>
+          <LineageGlyph lineage={p.lineage} size={270} color={color} />
+        </div>
         <div className="pill-row">
           <span className="pill lineage" style={{ color, borderColor: color }}>
+            <LineageGlyph lineage={p.lineage} size={13} color={color} />
             {p.lineage}
           </span>
           {rejected && <span className="pill ember">≉ rejected</span>}
@@ -132,7 +138,9 @@ export default function NodePanel({ session, state, practiceUnlocked, onSelect }
           {cite}
           {p.source.translationNote ? ` — ${p.source.translationNote}` : ''}
         </p>
-        <blockquote className="passage">{p.passage}</blockquote>
+        <blockquote className="passage" style={{ borderLeftColor: `${color}66` }}>
+          {p.passage}
+        </blockquote>
         <Fold label="the reading" defaultOpen={false}>
           <p className="reading">{p.reading}</p>
         </Fold>
@@ -158,12 +166,16 @@ export default function NodePanel({ session, state, practiceUnlocked, onSelect }
     const p = session.parallels.find((x) => x.id === sel.parallelId)!;
     const d = p.deepening!;
     return (
-      <div className="node-detail" key={d.id}>
+      <div className="node-detail chamber" key={d.id}>
+        <div className="chamber-mark" aria-hidden>
+          <LineageGlyph lineage={p.lineage} size={270} color={lineageColor[p.lineage]} />
+        </div>
         <div className="pill-row">
           <span
             className="pill lineage"
             style={{ color: lineageColor[p.lineage], borderColor: lineageColor[p.lineage] }}
           >
+            <LineageGlyph lineage={p.lineage} size={13} color={lineageColor[p.lineage]} />
             deeper · {p.lineage}
           </span>
           <ListenPill session={session} refNode={sel} />

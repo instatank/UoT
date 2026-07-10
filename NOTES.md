@@ -40,6 +40,25 @@ AA's critique of the first mobile pass: maps too static, text overlay basic/cut-
 
 Verified via Playwright at 390×844 (full loop to arrival across all three geometries, sheet states, folds, background-tap behavior, zoom controls, no page errors) and 1440×900 (right-column panel, wheel zoom, drag-pan with click suppression, empty state). Still device-untested: real pinch feel, iOS voice quality, ambience level on phone speakers.
 
+## Immersive world pass (AA: "make it a world")
+
+AA's critique of the product pass: still too plain/texty — wants to *inhabit* a space (doors, orbs, stars, constellations, atlas), insight delivered in each tradition's own sensibility, futuristic presentation over ancient content. What changed (see PLAN.md "The world layer" for architecture):
+
+- Atlas home (starfield + doors + constellations of completed descents), threshold entry, star nodes with lineage glyphs, flowing thread pulses, insight chambers (per-lineage wash/aurora/watermark/sound voicing), approach camera, star-birth arrival.
+- **Deliberately not built**: literal 3D/WebGL. Recommended against for now — heavy for phones, fights the contemplative-map aesthetic, and depth/light/sound gets the world-feel at a fraction of the cost. If AA still wants true 3D after feeling this pass, that's an explicit next decision.
+- **AA pushback noted mid-build**: "descent sounds like going down but you could be going up… you're moving around a space." The excavation *arc* is locked (CLAUDE.md decision 3); its *presentation* is exactly what the three lenses compare — radial already reads as moving around a space. Left as-is pending AA feeling the new skin; revisit only explicitly.
+- Engagement-loop check: constellations are memory, not score (no per-star counts, no targets, no streaks); flows/ripples/auras are ambient, not reward-triggered; arrival remains the only exit. The sky-note line says "the sky remembers N descents" — that is a count; kept because it's a memory statement in one place, but flag if it starts feeling like a scoreboard.
+
+Lessons:
+
+- **Desktop focus was silently a no-op**: at fit zoom `clampView` pins a smaller-than-container map to center, so `focusOn` moved nothing. Fix: `approach()` on the camera — center + ease zoom up to 1.35× fit. Mobile was unaffected (opens near 1:1, content larger than viewport).
+- **Constellation placement must dodge the title**: sky positions are % of viewport; anything with left ∈ (22 %, 64 %) is clamped to the top ~6 % or its label collides with the heading.
+- **Consume a seeded PRNG in exactly one memo.** Splitting `rng` creation and consumption across two `useMemo`s made positions depend on re-render order.
+- **The flowline trick**: `pathLength={1}` + `stroke-dasharray: 0.035 0.965` + animating `stroke-dashoffset` 1→0 gives a light pulse along any path/circle with zero JS. Under `prefers-reduced-motion` flowlines/ripples are `display: none` (a frozen dash reads as a stray dot).
+- **`.sheet-body` needs `overflow-x: hidden`** — the chamber watermark deliberately bleeds off the panel edge and would otherwise create a horizontal scrollbar inside the sheet.
+- Doors: `align-items: flex-start` on the row, or varying complaint lengths stagger the arches.
+- Verified via Playwright (Chromium, 1440×900 + 390×844): atlas → door-pass → threshold → full loop to arrival in radial/descent, chambers for Buddhism/Neuroscience/Taoism/Hindu/rejected-ember, constellation appears on return, zero console errors, no horizontal overflow. Still device-untested: pinch feel, ambience re-voicing on phone speakers, starfield perf on old phones.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.

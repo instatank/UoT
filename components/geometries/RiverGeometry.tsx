@@ -3,7 +3,7 @@
 import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapLayout, MapNode, smoothPath } from './common';
+import { Flow, GeometryProps, MapLayout, MapNode, smoothPath } from './common';
 
 const W = 1000;
 const H = 640;
@@ -71,14 +71,18 @@ export default function RiverGeometry({
                 [DEEP_X, driftY(y)],
                 [POOL_X - POOL_R - 6, MID_Y],
               ];
+          const lit = sameNode(state.selected, { kind: 'parallel', id: p.id });
           return (
             <g key={p.id} className="enter">
               <path
-                className={`stream${rejected ? ' dead' : ' draw'}`}
+                className={`stream${rejected ? ' dead' : ' draw'}${lit ? ' lit' : ''}`}
                 pathLength={rejected ? undefined : 1}
                 d={smoothPath(pts)}
                 stroke={color}
               />
+              {!rejected && (
+                <Flow d={smoothPath(pts)} color={color} delay={0.8 + i * 1.3} />
+              )}
               {rejected && (
                 // the rejected stream dries up before the pool — a dead end, marked
                 <g className="decor">
@@ -109,14 +113,22 @@ export default function RiverGeometry({
 
       {/* headwater: complaint feeds mechanism */}
       {state.complaintTouched && (
-        <line
-          className="edge draw"
-          pathLength={1}
-          x1={SOURCE_X + 34}
-          y1={MID_Y}
-          x2={MECH_X - 24}
-          y2={MID_Y}
-        />
+        <>
+          <line
+            className="edge draw"
+            pathLength={1}
+            x1={SOURCE_X + 34}
+            y1={MID_Y}
+            x2={MECH_X - 24}
+            y2={MID_Y}
+          />
+          {state.mechanismRevealed && (
+            <Flow
+              d={`M ${SOURCE_X + 34} ${MID_Y} L ${MECH_X - 24} ${MID_Y}`}
+              color={COMPLAINT_COLOR}
+            />
+          )}
+        </>
       )}
 
       {/* complaint — the source */}
@@ -164,6 +176,7 @@ export default function RiverGeometry({
               sublabel={p.lineage}
               color={rejected ? rejectedColor : lineageColor[p.lineage]}
               rejected={rejected}
+              glyph={p.lineage}
               visited={state.visitedParallels.includes(p.id)}
               selected={sameNode(state.selected, { kind: 'parallel', id: p.id })}
               labelPos={y <= MID_Y ? 'above' : 'below'}
@@ -200,6 +213,7 @@ export default function RiverGeometry({
         label={session.practice.name}
         sublabel={practiceUnlocked ? 'practice pool — enter' : 'practice pool'}
         color={GOLD}
+        gate
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}

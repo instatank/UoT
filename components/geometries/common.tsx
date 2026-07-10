@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { NodeRef, SessionData } from '@/lib/types';
+import type { Lineage, NodeRef, SessionData } from '@/lib/types';
 import type { SessionState } from '@/lib/state';
+import { LineageGlyphSvg } from '../LineageGlyph';
 
 export const MOBILE_QUERY = '(max-width: 768px)';
 
@@ -83,6 +84,30 @@ export function wrapLabel(label: string, maxChars = 18): string[] {
   return lines.slice(0, 3);
 }
 
+/** A pulse of light traveling along a path — the thread is alive. Purely
+ * decorative; hidden entirely under prefers-reduced-motion. */
+export function Flow({
+  d,
+  color,
+  delay = 0,
+  slow,
+}: {
+  d: string;
+  color: string;
+  delay?: number;
+  slow?: boolean;
+}) {
+  return (
+    <path
+      className={`flowline${slow ? ' slow' : ''}`}
+      d={d}
+      pathLength={1}
+      stroke={color}
+      style={{ animationDelay: `${delay}s` }}
+    />
+  );
+}
+
 interface MapNodeProps {
   x: number;
   y: number;
@@ -96,6 +121,8 @@ interface MapNodeProps {
   visited?: boolean;
   locked?: boolean;
   cue?: boolean; // breathes — the map's quiet invitation
+  glyph?: Lineage; // lineage seal drawn inside the star
+  gate?: boolean; // practice terminal — double ring, turning when unlocked
   labelPos?: 'below' | 'above' | 'left' | 'right';
   onClick?: () => void;
 }
@@ -113,6 +140,8 @@ export function MapNode({
   visited,
   locked,
   cue,
+  glyph,
+  gate,
   labelPos = 'below',
   onClick,
 }: MapNodeProps) {
@@ -145,6 +174,22 @@ export function MapNode({
       {onClick && !locked && (
         <circle cx={x} cy={y} r={Math.max(r + 10, 26)} fill="transparent" stroke="none" />
       )}
+      {/* starlight aura — brighter once visited */}
+      {!locked && (
+        <circle
+          className="aura"
+          cx={x}
+          cy={y}
+          r={r * 2.05}
+          fill={color}
+          opacity={visited || selected ? 0.14 : 0.05}
+          filter="url(#softBlur)"
+        />
+      )}
+      {/* one-shot reveal ripple — the node surfaces */}
+      {!locked && (
+        <circle className="ripple" cx={x} cy={y} r={r + 8} fill="none" stroke={color} />
+      )}
       {selected && (
         <circle
           className="halo"
@@ -159,6 +204,31 @@ export function MapNode({
       {cue && (
         <circle className="cue-ring" cx={x} cy={y} r={r + 5} fill="none" stroke={color} />
       )}
+      {/* fine outer ring — the star's setting */}
+      {(visited || selected) && !rejected && (
+        <circle
+          cx={x}
+          cy={y}
+          r={r + 3.5}
+          fill="none"
+          stroke={color}
+          strokeOpacity={0.28}
+          strokeWidth={0.8}
+        />
+      )}
+      {gate && (
+        <circle
+          className={`gate-ring${locked ? '' : ' live'}`}
+          cx={x}
+          cy={y}
+          r={r + 6}
+          fill="none"
+          stroke={color}
+          strokeOpacity={locked ? 0.25 : 0.7}
+          strokeWidth={1}
+          strokeDasharray="2 6"
+        />
+      )}
       <circle
         className="core"
         cx={x}
@@ -172,6 +242,16 @@ export function MapNode({
         strokeDasharray={rejected ? '4 4' : undefined}
         filter={visited ? 'url(#nodeGlow)' : undefined}
       />
+      {glyph && !rejected && r >= 12 && (
+        <LineageGlyphSvg
+          lineage={glyph}
+          x={x}
+          y={y}
+          size={r * 1.2}
+          color={color}
+          opacity={locked ? 0.35 : 0.9}
+        />
+      )}
       {rejected && (
         <text x={x} y={y + 4} textAnchor="middle" fontSize={12} fill={color} opacity={0.9}>
           ≉

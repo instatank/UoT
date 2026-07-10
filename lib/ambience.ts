@@ -7,11 +7,14 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let filterNode: BiquadFilterNode | null = null;
 let nodes: OscillatorNode[] = [];
 let lfos: OscillatorNode[] = [];
 let running = false;
 
 const LEVEL = 0.028;
+const ROOT = 96;
+const DEFAULT_VOICING = { fifth: 1.5, octave: 2, filter: 340 };
 
 function build() {
   ctx = new (window.AudioContext ||
@@ -20,15 +23,16 @@ function build() {
   master.gain.value = 0;
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.value = 340;
+  filter.frequency.value = DEFAULT_VOICING.filter;
   filter.Q.value = 0.4;
   filter.connect(master);
   master.connect(ctx.destination);
+  filterNode = filter;
 
   const partials: [number, number][] = [
-    [96, 1], // root
-    [144, 0.55], // fifth
-    [192, 0.18], // octave shimmer
+    [ROOT, 1], // root — never moves
+    [ROOT * DEFAULT_VOICING.fifth, 0.55], // the interval that carries the mood
+    [ROOT * DEFAULT_VOICING.octave, 0.18], // shimmer
   ];
   nodes = partials.map(([freq, amp]) => {
     const osc = ctx!.createOscillator();
@@ -64,6 +68,21 @@ function build() {
 
 export function ambienceRunning(): boolean {
   return running;
+}
+
+// Re-voice the bed to a lineage's atmosphere: the root holds, the second
+// partial slides to the tradition's interval, the ceiling (lowpass) rises or
+// sinks. Slow ramps — a room changing color, not a chord change. No-op when
+// the bed is off; null returns to the neutral voicing.
+export function tintAmbience(
+  voicing: { fifth: number; octave: number; filter: number } | null
+): void {
+  if (!ctx || !running || !filterNode) return;
+  const v = voicing ?? DEFAULT_VOICING;
+  const t = ctx.currentTime;
+  filterNode.frequency.setTargetAtTime(v.filter, t, 1.6);
+  nodes[1]?.frequency.setTargetAtTime(ROOT * v.fifth, t, 1.6);
+  nodes[2]?.frequency.setTargetAtTime(ROOT * v.octave, t, 1.6);
 }
 
 export async function toggleAmbience(): Promise<boolean> {

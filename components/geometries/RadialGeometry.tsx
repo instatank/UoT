@@ -3,7 +3,7 @@
 import type { NodeRef, SessionData } from '@/lib/types';
 import { sameNode } from '@/lib/types';
 import { lineageColor, rejectedColor } from '@/lib/lineage';
-import { GeometryProps, MapLayout, MapNode, polar } from './common';
+import { Flow, GeometryProps, MapLayout, MapNode, polar } from './common';
 
 const W = 800;
 const H = 800;
@@ -81,6 +81,18 @@ export default function RadialGeometry({
           strokeOpacity={practiceUnlocked ? 0.8 : 0.9}
           filter={practiceUnlocked ? 'url(#edgeGlow)' : undefined}
         />
+        {practiceUnlocked && (
+          // a light circling the open edge
+          <circle
+            className="flowline slow"
+            cx={CX}
+            cy={CY}
+            r={R_PRACTICE}
+            pathLength={1}
+            fill="none"
+            stroke={GOLD}
+          />
+        )}
         <text x={CX} y={CY - R_PRACTICE - 12} textAnchor="middle" opacity={practiceUnlocked ? 1 : 0.5}>
           {practiceUnlocked ? 'the practice edge — step out' : 'the practice edge'}
         </text>
@@ -101,14 +113,22 @@ export default function RadialGeometry({
 
       {/* complaint → mechanism spoke */}
       {state.complaintTouched && (
-        <line
-          className="edge draw"
-          pathLength={1}
-          x1={CX}
-          y1={CY - 46}
-          x2={CX}
-          y2={CY - R_MECH + 20}
-        />
+        <>
+          <line
+            className={`edge draw${sameNode(state.selected, { kind: 'mechanism' }) ? ' lit' : ''}`}
+            style={
+              sameNode(state.selected, { kind: 'mechanism' }) ? { stroke: MECH_COLOR } : undefined
+            }
+            pathLength={1}
+            x1={CX}
+            y1={CY - 46}
+            x2={CX}
+            y2={CY - R_MECH + 20}
+          />
+          {state.mechanismRevealed && (
+            <Flow d={`M ${CX} ${CY - 46} L ${CX} ${CY - R_MECH + 20}`} color={MECH_COLOR} />
+          )}
+        </>
       )}
 
       {/* parallel spokes from mechanism ring */}
@@ -116,8 +136,28 @@ export default function RadialGeometry({
         session.parallels.map((p, i) => {
           const [x1, y1] = polar(CX, CY, R_MECH, angles[i]);
           const [x2, y2] = polar(CX, CY, R_PARALLEL - 17, angles[i]);
+          const rejected = p.status === 'rejected';
+          const color = rejected ? rejectedColor : lineageColor[p.lineage];
+          const lit = sameNode(state.selected, { kind: 'parallel', id: p.id });
           return (
-            <line key={p.id} className="edge draw" pathLength={1} x1={x1} y1={y1} x2={x2} y2={y2} />
+            <g key={p.id}>
+              <line
+                className={`edge draw${lit ? ' lit' : ''}`}
+                style={lit ? { stroke: color } : undefined}
+                pathLength={1}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+              />
+              {!rejected && (
+                <Flow
+                  d={`M ${x1} ${y1} L ${x2} ${y2}`}
+                  color={color}
+                  delay={0.9 + i * 1.15}
+                />
+              )}
+            </g>
           );
         })}
 
@@ -131,6 +171,7 @@ export default function RadialGeometry({
         return (
           <g key={p.id} className="enter">
             <line className="edge draw" pathLength={1} x1={x1} y1={y1} x2={x2} y2={y2} />
+            <Flow d={`M ${x1} ${y1} L ${x2} ${y2}`} color={lineageColor[p.lineage]} delay={0.4 + i * 0.7} />
             <line className="edge-faint" x1={tx1} y1={ty1} x2={tx2} y2={ty2} />
           </g>
         );
@@ -181,6 +222,7 @@ export default function RadialGeometry({
               sublabel={p.lineage}
               color={rejected ? rejectedColor : lineageColor[p.lineage]}
               rejected={rejected}
+              glyph={p.lineage}
               visited={state.visitedParallels.includes(p.id)}
               selected={sameNode(state.selected, { kind: 'parallel', id: p.id })}
               labelPos={labelPosFor(angles[i])}
@@ -220,6 +262,7 @@ export default function RadialGeometry({
         label={session.practice.name}
         sublabel="practice"
         color={GOLD}
+        gate
         locked={!practiceUnlocked}
         visited={state.arrived}
         selected={sameNode(state.selected, { kind: 'practice' })}

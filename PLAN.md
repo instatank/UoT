@@ -13,6 +13,17 @@ A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice 
 - **SVG for all three maps**, rendered into a shared camera engine (`MapViewport`) rather than laid out flat — see below. No chart library — layouts are simple enough to compute by hand, and full control keeps the contemplative aesthetic.
 - **No new runtime dependencies.** Camera gestures are hand-rolled pointer events + rAF; voice is the browser's Web Speech API; ambience is generated WebAudio. `package.json` still lists only next/react/typescript.
 
+## The world layer (immersive pass)
+
+The app now reads as one continuous world — a night sky the user dwells in — rather than screens:
+
+- **The Atlas** (`components/AtlasHome.tsx`) is the home surface: a canvas starfield (`components/Starfield.tsx` — layered stars, twinkle, pointer parallax on fine pointers, rare meteor; static single frame under reduced motion) with two kinds of objects in it. **Doors**: each session is an arched threshold (SVG, hairline masonry, inner light, a preview constellation of its parallels — rejected as dashed ember). Clicking one swings the arch (CSS perspective), floods light from that door (`.door-pass`), then routes to the session. **Constellations**: completed descents, read from the localStorage stub, drawn as small star-figures (visited parallels in lineage colors, rejected dashed, arrival star in gold) placed deterministically (`lib/rand.ts` seeded PRNG) in the top band of the sky, clear of the title. Memory made visible — deliberately not a score.
+- **The threshold** (`SessionView`): a session opens with a breath at the surface — pain category, the complaint as an inscription, then the map fades in. Auto-lifts (~2.6 s), tap to skip, skipped entirely under reduced motion.
+- **Living maps**: nodes are stars (blurred aura, fine setting ring, one-shot reveal ripple), parallels carry their lineage's **glyph** (`components/LineageGlyph.tsx` — stroke-only geometric seals: wheel, cross, spiral, flame, watercourse, citadel, neuron; symbolic per decision 7, never figures). Light pulses (`Flow` in `geometries/common.tsx` — pathLength dash trick) travel the live edges/streams; the selected node's thread lights up in its lineage color; the practice terminal is a gated double ring that turns once unlocked; a dim starfield sits behind every map.
+- **Insight chambers**: selecting a parallel/deepening pours that lineage's atmosphere over the whole experience — the reading surface tints (`--sel-wash` on the sheet), the aurora behind the map takes the lineage hue (`--aurora`), a large faint glyph watermarks the panel, content arrives as a staged cascade, and the ambient bed (if on) re-voices to the tradition's interval (`lineageAtmosphere` in `lib/lineage.ts`, `tintAmbience` in `lib/ambience.ts` — root never moves; the second partial slides to a just-intonation interval and the lowpass ceiling shifts). Rejected parallels get the ember room (minor third, low ceiling).
+- **Gravitation**: selection moves the camera toward the node — mobile centers it in the band above the sheet; desktop uses `approach()` (centers + eases zoom to ~1.35× fit, because at fit scale the clamp makes plain focus a no-op). Dismissing arrival fits back out to see the whole dug map.
+- **Arrival is a star-birth**: the overlay ignites a gold star (flare, expanding halos, slow-turning rays) above the payoff, and the closing line links to the Atlas, where the new constellation now shines.
+
 ## Map camera (`components/MapViewport.tsx`)
 
 Each geometry no longer renders a flat `<svg>` — it exports pure SVG content plus a `layout()` function (canvas size + a `pos(ref: NodeRef)` lookup), and `MapViewport` owns the camera on top of it:
@@ -72,22 +83,26 @@ lib/
   sessions.ts                  — static JSON loader
   state.ts                     — useSessionState hook (shared state machine)
   constellation.ts             — localStorage stub: save/load session records
-  lineage.ts                   — lineage → color map
+  lineage.ts                   — lineage → color map + per-lineage atmosphere (wash/aurora/voicing)
+  rand.ts                      — seeded PRNG (deterministic constellation/door layouts)
   voice.ts                     — Web Speech API wrapper + per-node speech text
-  ambience.ts                  — generated WebAudio drone, toggleable
+  ambience.ts                  — generated WebAudio drone, toggleable + lineage re-voicing
 components/
-  MapViewport.tsx              — shared camera: pan/zoom/focus for all geometries
-  SessionView.tsx              — client shell: header, switcher, camera, sheet, arrival
-  NodePanel.tsx                — detail content for selected node (pills + folds)
-  ArrivalOverlay.tsx           — payoff → practice → recorded-to-constellation
+  Starfield.tsx                — canvas night sky (twinkle, parallax, rare meteor)
+  LineageGlyph.tsx             — stroke-only lineage seals (HTML svg + in-SVG variants)
+  AtlasHome.tsx                — the Atlas: sky, constellations, doors, door-pass transition
+  MapViewport.tsx              — shared camera: pan/zoom/focus/approach for all geometries
+  SessionView.tsx              — client shell: threshold, header, lenses, camera, sheet, arrival
+  NodePanel.tsx                — detail content for selected node (pills + folds + chamber)
+  ArrivalOverlay.tsx           — star-birth → payoff → practice → set into the sky
   geometries/
-    common.tsx                 — MapNode, GeometryProps, MapLayout type, useCompact()
+    common.tsx                 — MapNode (star nodes), Flow, GeometryProps, MapLayout, useCompact()
     RadialGeometry.tsx          (+ radialLayout)
     RiverGeometry.tsx           (+ riverLayout)
     DescentGeometry.tsx         (+ descentLayout)
 app/
   layout.tsx, globals.css
-  page.tsx                     — session picker (cold start; provisional, flagged)
+  page.tsx                     — renders the Atlas (cold start via doors; provisional, flagged)
   session/[id]/page.tsx        — statically generated session view
 ```
 
