@@ -15,13 +15,14 @@ A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice 
 
 ## Next steps — planned with AA (2026-07-10)
 
-AA signed off on the Voyage's first look ("intuitive, natural, interactive and immersive — good job") and directed: take the learnings, note the pending steps, build later. Queue item #1 — **the atmosphere pass** — is now built (same day, branch `claude/atmosphere-interactive-elements-oa2to9`); see "The atmosphere pass" under the Voyage section below. Still open, in rough priority order:
+AA signed off on the Voyage's first look ("intuitive, natural, interactive and immersive — good job") and directed: take the learnings, note the pending steps, build later. Queue item #1 — **the atmosphere pass** — is now built and merged to `main`/production (see "The atmosphere pass" under the Voyage section below), **but AA has not visually reviewed it yet** — it shipped to give a planning session full context, so its on-device review is still owed and is the first open item. Still open, in rough priority order:
 
-1. **Pacing dials** — AA calls current pacing "decent, we'll refine later." The dials are named in code: idle-drift delay (7 s) and turn rate (0.35 rad/s) in `engine.ts` `freeFlight`; gaze settle (1.7 s, `orientToward`); cruise/thrust (`CRUISE`/`THRUST_MAX`); orbit speed; autopilot duration. Tune with AA on-device, not in review.
-2. **Deferred review findings** — ranked list at the end of NOTES.md "Adversarial review pass" (thread near-plane clipping, orbit-entry continuity, label caching, DPR-3 label softness, StrictMode double-write in `state.ts`, chamber focus restore; the two per-frame-gradient findings — Christianity world beams, gate pillar — were cashed in during the atmosphere pass).
-3. **Voyage ↔ bird's-eye state carry-over** — the two routes hold separate `useSessionState` instances; progress resets when switching. Lift to a store or sessionStorage snapshot keyed by session id.
-4. **Voyage on real devices** — drag feel, pinch feel, thermals, iOS Safari canvas perf, and now atmosphere blit cost on real GPUs. All Playwright-verified only so far.
-5. **The actual product priority beneath all presentation work** (PRODUCT.md Phase 1): the Admission Gauntlet kill-pass on `registry/drafts/anxiety-gauntlet.md` — AA's judgment-hours, not code. The Voyage is a reader; the Registry is the company.
+1. **AA's visual/on-device review of the atmosphere pass** — it's live in production but has never had AA's eyes on it moving. Confirm it feels right (nebulae, thread dust, approach detail, lineage skyboxes) and doesn't thermal-throttle real phones; anything wrong lands as new commits on `main`. This overlaps #5 (real-device pass) — do them together.
+2. **Pacing dials** — AA calls current pacing "decent, we'll refine later." The dials are named in code: idle-drift delay (7 s) and turn rate (0.35 rad/s) in `engine.ts` `freeFlight`; gaze settle (1.7 s, `orientToward`); cruise/thrust (`CRUISE`/`THRUST_MAX`); orbit speed; autopilot duration. Tune with AA on-device, not in review.
+3. **Deferred review findings** — ranked list at the end of NOTES.md "Adversarial review pass" (thread near-plane clipping, orbit-entry continuity, label caching, DPR-3 label softness, StrictMode double-write in `state.ts`, chamber focus restore; the two per-frame-gradient findings — Christianity world beams, gate pillar — were cashed in during the atmosphere pass).
+4. **Voyage ↔ bird's-eye state carry-over** — the two routes hold separate `useSessionState` instances; progress resets when switching. Lift to a store or sessionStorage snapshot keyed by session id.
+5. **Voyage on real devices** — drag feel, pinch feel, thermals, iOS Safari canvas perf, and now atmosphere blit cost on real GPUs. All Playwright-verified only so far.
+6. **The actual product priority beneath all presentation work** (PRODUCT.md Phase 1): the Admission Gauntlet kill-pass on `registry/drafts/anxiety-gauntlet.md` — AA's judgment-hours, not code. The Voyage is a reader; the Registry is the company.
 
 ## The Voyage (first-person pass)
 
@@ -181,7 +182,7 @@ Parallel: `id, lineage (fixed enum), status: accepted|rejected, title, source {w
 
 Vercel project `uo-t`, connected to this repo's `main` branch — every push to `main` triggers a production build automatically (this is Vercel's git integration, not something this codebase configures). Production: **https://uo-t.vercel.app**. `vercel.json` pins the framework preset to `nextjs` (auto-detection previously came back null and mis-built as a static site). No preview-branch workflow is set up; all shipped work currently lands on `main` directly per AA's review pattern so far — confirm with AA before assuming that's still wanted if this changes.
 
-**Current branch state (2026-07-10):** production `main` ends at the Voyage navigation pass. The atmosphere pass lives unmerged on `claude/atmosphere-interactive-elements-oa2to9` (one commit ahead of `main`), awaiting AA's visual review — merge only on AA's explicit ask.
+**Current branch state (2026-07-12):** `main` now includes the atmosphere pass (merged from `claude/atmosphere-interactive-elements-oa2to9`) and has auto-deployed to production. That merge was done at AA's request to give a fresh planning session the full current context — **not** because the atmosphere pass passed review. AA's visual/on-device verdict on it is still outstanding; if it needs changes, they land as new work on `main`, not a revert of a branch. No other branches carry unmerged work.
 
 ## Build order (historical — first build; kept for reference)
 
