@@ -181,6 +181,8 @@ Parallel: `id, lineage (fixed enum), status: accepted|rejected, title, source {w
 
 Vercel project `uo-t`, connected to this repo's `main` branch — every push to `main` triggers a production build automatically (this is Vercel's git integration, not something this codebase configures). Production: **https://uo-t.vercel.app**. `vercel.json` pins the framework preset to `nextjs` (auto-detection previously came back null and mis-built as a static site). No preview-branch workflow is set up; all shipped work currently lands on `main` directly per AA's review pattern so far — confirm with AA before assuming that's still wanted if this changes.
 
+**Current branch state (2026-07-10):** production `main` ends at the Voyage navigation pass. The atmosphere pass lives unmerged on `claude/atmosphere-interactive-elements-oa2to9` (one commit ahead of `main`), awaiting AA's visual review — merge only on AA's explicit ask.
+
 ## Build order (historical — first build; kept for reference)
 
 1. PLAN.md, scaffold (package.json, tsconfig, app shell), `npm install`

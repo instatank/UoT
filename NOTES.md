@@ -124,6 +124,8 @@ PLAN's queued item #1, built as directed after AA's sign-off: nebula fields (fou
 - Reduced-motion fix en route: `paintWorld` received live `t`, so worlds kept rotating under reduced motion; the engine now hands it frozen atmosphere-time. Streams skip entirely, like the pulse.
 - Verified via Playwright: full loop (real beacon tap + hook travel) on desktop, reduced-motion, and mobile-touch viewports — chambers open, gate reveals, arrival lands, zero console errors; screenshots of every atmosphere surface reviewed (adrift nebulae, surfaced haze, approach detail, in-chamber skybox, mirage close-up, gate pillar).
 
+**Handover state (end of this session):** the atmosphere pass is committed and pushed to `claude/atmosphere-interactive-elements-oa2to9` (single commit on top of `main`'s `d0a17c1`); screenshots were sent to AA in-chat, but AA has **not yet reviewed or signed off**. Next session: get AA's visual verdict first (ideally on-device — PLAN "Next steps" #4 overlaps), then merge to `main` **only on AA's explicit ask** (auto-deploys to production). No other branches carry unmerged work.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.
@@ -134,3 +136,6 @@ PLAN's queued item #1, built as directed after AA's sign-off: nebula fields (fou
 
 - Playwright is installed globally: run scripts with `NODE_PATH=/opt/node22/lib/node_modules`; Chromium is preinstalled (no `playwright install`).
 - To kill a dev/prod server, use `fuser -k <port>/tcp` — `pkill -f next` matches the invoking shell's own command line and kills the session shell (exit 144).
+- **A/B perf baseline recipe** (used for the atmosphere pass): `git worktree add <tmp> <baseline-sha>`, symlink the main checkout's `node_modules` into the worktree, `npm run build` there, `PORT=3001 npm run start`, then probe both ports with the same headless script sampling `window.__voyageEngine.frameEma`/`quality` after ~8 s and ~16 s of untouched flight (idle drift makes it deterministic-enough free flight). Headless Chromium rasterizes canvas on CPU (SwiftShader) — treat it as a worst-case old phone, not as representative of GPU devices.
+- **Clone-time remote refs go stale.** This container's `origin/main` pointed at the repo's very first upload until an explicit `git fetch origin main` revealed the real head — fetch before comparing anything against `main`, or a baseline/merge decision starts from fiction.
+- Fresh containers need `npm install` before `tsc`/`next build` (node_modules is not part of the clone).
