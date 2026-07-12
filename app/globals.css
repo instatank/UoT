@@ -833,9 +833,17 @@ a.browse-row:hover {
   color: var(--text);
 }
 
+/* hotline links must be effortless to hit — padding grows the touch target
+   without moving the text (this page is the one place tap precision matters) */
 .crisis-resources a {
   color: var(--gold);
-  border-bottom: 1px solid rgba(216, 201, 138, 0.35);
+  text-decoration: underline;
+  text-decoration-color: rgba(216, 201, 138, 0.35);
+  text-underline-offset: 3px;
+  display: inline-block;
+  padding: 13px 8px;
+  margin: -13px -8px;
+  position: relative;
 }
 
 .crisis-note {
@@ -1097,7 +1105,14 @@ a.browse-row:hover {
   padding: 8px 18px;
   pointer-events: none;
   animation: surface 1.4s ease 0.8s both;
+  transition: opacity 0.9s ease;
   z-index: 2;
+}
+
+/* the coach mark bows out — on first touch of the map, or on its own.
+   (!important: the surface animation's fill would otherwise hold opacity 1) */
+.map-hint.gone {
+  opacity: 0 !important;
 }
 
 /* ---------- SVG map nodes ---------- */
@@ -1829,6 +1844,27 @@ ol.steps li::before {
     justify-content: space-between;
   }
 
+  /* thumb-sized HUD controls */
+  .vhud-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* the stage direction moves under the HUD — the bottom belongs to the
+     compass and to world labels, and the hint was wrapping across both */
+  .vhint {
+    bottom: auto;
+    top: calc(env(safe-area-inset-top) + 78px);
+    max-width: 88vw;
+  }
+
+  .vc-btn,
+  .vc-go {
+    width: 46px;
+    height: 46px;
+  }
+
   .vchamber-inner {
     max-height: 58vh;
     max-height: 58dvh;
@@ -2238,7 +2274,8 @@ ol.steps li::before {
   }
 
   .sheet.pos-full {
-    --sheet-y: 10dvh;
+    /* clear the (possibly notch-padded) two-row header instead of sliding under it */
+    --sheet-y: max(10dvh, calc(env(safe-area-inset-top) + 98px));
   }
 
   .sheet.pos-half {
@@ -2305,6 +2342,10 @@ ol.steps li::before {
   .pill.action,
   .fold-head {
     min-height: 46px;
+  }
+
+  .pill.listen {
+    min-height: 44px;
   }
 
   .zoom-controls {

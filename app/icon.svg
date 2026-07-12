@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- a quiet star on night — the app's mark; also silences the /favicon.ico 404 -->
+  <rect width="64" height="64" rx="14" fill="#0a0d13"/>
+  <circle cx="32" cy="32" r="13" fill="none" stroke="#d8c98a" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="2 5"/>
+  <path d="M32 18 L34.4 29.6 L46 32 L34.4 34.4 L32 46 L29.6 34.4 L18 32 L29.6 29.6 Z" fill="#e8dcb0"/>
+  <circle cx="32" cy="32" r="3.2" fill="#fdf6d8"/>
+</svg>

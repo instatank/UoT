@@ -235,9 +235,10 @@ export default function RadialGeometry({
       {session.parallels.map((p, i) => {
         if (!p.deepening || !state.visitedParallels.includes(p.id)) return null;
         const [x, y] = polar(CX, CY, R_DEEP, angles[i]);
-        // on horizontal spokes the parallel's label already owns that side
+        // on horizontal spokes the parallel's label already owns that side;
+        // on upward spokes 'above' would sit on the practice-edge caption
         const lp = labelPosFor(angles[i]);
-        const deepLp = lp === 'left' || lp === 'right' ? 'above' : lp;
+        const deepLp = lp === 'left' || lp === 'right' ? 'above' : lp === 'above' ? 'right' : lp;
         return (
           <MapNode
             key={p.id}
