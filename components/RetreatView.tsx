@@ -1,25 +1,23 @@
 'use client';
 
-// The Voyage — the session as a first-person flight. You begin beside the
-// complaint (a pale beacon above), descend to the mechanism (the sun the
-// system turns on), fly between lineage worlds and are pulled into orbit
-// around whichever you choose; landing opens that tradition's insight chamber
-// in its own atmosphere. Once a real world has been visited the practice gate
-// ignites far below; flying into it is arrival — the camera pulls back and
-// the separate worlds resolve into one connected figure.
+// The Retreat — the session as a walk through a mountain valley at golden
+// hour. You arrive at a trailhead arch (the complaint), follow the worn path
+// down to a spring in the meadow (the mechanism), visit the sites that wake
+// around it (parallels — the rejected one a dry hollow whose ember gutters),
+// and when a place has truly landed, the jetty lanterns light and the walk
+// ends over water. Arrival is dusk falling and the camera rising to see the
+// whole figure you walked.
 //
-// Same state machine as the map lenses (useSessionState) — the Voyage is a
+// Same state machine as the maps and the Voyage (useSessionState) — a fifth
 // presentation of the Descent arc, not a different session model. Decision 8's
-// presentation half is deliberately amended here (AA, 2026-07-10): first-person
-// navigation, but no scores, no objectives, no HUD clutter — arrival is still
-// the only exit.
+// presentation half (first-person navigation, AA 2026-07-10) extends here:
+// no scores, no objectives, no HUD clutter — arrival is still the only exit.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import type { NodeRef, Parallel, SessionData } from '@/lib/types';
+import type { Lineage, NodeRef, Parallel, SessionData } from '@/lib/types';
 import { useSessionState } from '@/lib/state';
-import { tintAmbience, toggleAmbience } from '@/lib/ambience';
 import {
   lineageAtmosphere,
   lineageColor,
@@ -27,103 +25,86 @@ import {
   rejectedColor,
 } from '@/lib/lineage';
 import { nodeSpeech, useVoice, voiceSupported } from '@/lib/voice';
-import { mulberry32, seedFrom } from '@/lib/rand';
-import { VoyageEngine, type VoyageTarget } from '@/lib/voyage/engine';
-import { lineageWorldKind } from '@/lib/voyage/worlds';
+import { seedFrom } from '@/lib/rand';
+import {
+  RetreatEngine,
+  type RetreatSpot,
+  type SiteKind,
+} from '@/lib/retreat/engine';
+import {
+  disposeNature,
+  duskNature,
+  setLakeCloseness,
+  step as natureStep,
+  tintNature,
+  toggleNature,
+} from '@/lib/retreat/nature';
 import LineageGlyph from './LineageGlyph';
 import Fold from './Fold';
 import ArrivalOverlay from './ArrivalOverlay';
 
-const COMPLAINT_COLOR = '#b9c3d6';
 const GOLD = '#d8c98a';
+const COMPLAINT_COLOR = '#cdd3dd';
 
-// The system lies along a gentle forward-descending arc — every next
-// destination sits within a comfortable look, never straight down. (The first
-// layout put the sun ~75° below the beacon: invisible, and the voyage died
-// there for a real user.) The gate hangs BELOW the sun, never behind it —
-// behind meant occluded, and taps meant for the gate hit the sun instead.
-const SUN_POS: [number, number, number] = [0, 0, 330];
-const GATE_POS: [number, number, number] = [0, -330, 330];
+const siteKindFor: Record<Lineage, SiteKind> = {
+  Stoicism: 'stoa',
+  Buddhism: 'stupa',
+  'Hindu/Gītā': 'flame',
+  Christianity: 'arch',
+  Sufism: 'circle',
+  Taoism: 'pool',
+  'Neuroscience/Psychology': 'deck',
+};
 
-function buildTargets(session: SessionData): {
-  targets: VoyageTarget[];
-  camPos: [number, number, number];
-  lookAt: [number, number, number];
-} {
-  const rng = mulberry32(seedFrom(session.id));
-  const N = session.parallels.length;
-  const worlds: VoyageTarget[] = session.parallels.map((p, i) => {
-    const ang = ((-90 + (360 / N) * i + (rng() - 0.5) * 24) * Math.PI) / 180;
-    const rad = 310 + rng() * 70;
-    const y = -70 + rng() * 150;
+function buildSpots(session: SessionData): RetreatSpot[] {
+  const sites: RetreatSpot[] = session.parallels.map((p) => {
     const rejected = p.status === 'rejected';
     return {
       id: p.id,
-      kind: 'world',
-      pos: [
-        SUN_POS[0] + Math.cos(ang) * rad,
-        SUN_POS[1] + y,
-        SUN_POS[2] + Math.sin(ang) * rad,
-      ],
-      r: 30,
+      kind: rejected ? 'hollow' : siteKindFor[p.lineage],
       title: p.title,
       subtitle: p.lineage,
       color: rejected ? rejectedColor : lineageColor[p.lineage],
-      worldKind: rejected ? 'rejected' : lineageWorldKind[p.lineage],
-      present: true,
       active: false,
-      dim: true,
-      locked: false,
+      lit: false,
       visited: false,
     };
   });
-  const targets: VoyageTarget[] = [
+  return [
     {
-      id: 'beacon',
-      kind: 'beacon',
-      pos: [0, 205, -50],
-      r: 16,
-      title: 'the complaint',
+      id: 'trailhead',
+      kind: 'trailhead',
+      title: 'the trailhead',
       subtitle: 'the surface',
       color: COMPLAINT_COLOR,
-      present: true,
       active: true,
-      dim: false,
-      locked: false,
-      visited: false,
+      lit: true,
       cue: true,
+      visited: false,
     },
     {
       id: 'mechanism',
-      kind: 'sun',
-      pos: SUN_POS,
-      r: 34,
+      kind: 'spring',
       title: session.mechanism.name,
-      subtitle: 'the mechanism',
+      subtitle: 'the spring · the mechanism',
       color: '#e8dcb0',
-      present: true,
       active: false,
-      dim: true,
-      locked: false,
+      lit: false,
       visited: false,
     },
-    ...worlds,
+    ...sites,
     {
-      id: 'gate',
-      kind: 'gate',
-      pos: GATE_POS,
-      r: 26,
+      id: 'jetty',
+      kind: 'jetty',
       title: session.practice.name,
-      subtitle: 'the practice gate · sealed',
+      subtitle: 'the jetty · dark',
       color: GOLD,
-      present: true,
       active: true,
-      dim: true,
+      lit: false,
       locked: true,
       visited: false,
     },
   ];
-  return { targets, camPos: [0, 250, -330], lookAt: [0, 205, -50] };
 }
 
 function ListenPill({ session, refNode }: { session: SessionData; refNode: NodeRef }) {
@@ -146,7 +127,7 @@ function ListenPill({ session, refNode }: { session: SessionData; refNode: NodeR
   );
 }
 
-// ---------- the chamber: reading surface while in orbit ----------
+// ---------- the resting place: reading at a site ----------
 
 function Chamber({
   session,
@@ -164,7 +145,6 @@ function Chamber({
   onRelease: () => void;
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
-  // reading focus enters the room with you; Escape releases orbit
   useEffect(() => {
     innerRef.current?.focus({ preventScroll: true });
   }, [refNode]);
@@ -185,7 +165,10 @@ function Chamber({
     body = (
       <>
         <p className="body-text">{session.complaintBody}</p>
-        <p className="hint">Something is running underneath this. Release, and descend toward the light below.</p>
+        <p className="hint">
+          You carried this through the arch with you. Something runs beneath it — the path leads
+          down to a spring.
+        </p>
       </>
     );
   } else if (refNode.kind === 'mechanism') {
@@ -201,8 +184,8 @@ function Chamber({
       <>
         <p className="body-text">{m.description}</p>
         <p className="hint">
-          Worlds have surfaced around this sun — each lineage catches the same machine at a
-          different joint. One of them only looks like it does.
+          This is the water under the complaint. Places have woken around the meadow — each
+          tradition built beside the same spring. One of them only looks like it did.
         </p>
       </>
     );
@@ -241,14 +224,17 @@ function Chamber({
             <p className="reading">{p.reading}</p>
           </Fold>
           {rejected && p.rejectionReason && (
-            <Fold label="why this world runs dry" defaultOpen tone="ember">
+            <Fold label="why this basin ran dry" defaultOpen tone="ember">
               <p>{p.rejectionReason}</p>
-              <p className="hint">A mirage — it resembles the others from a distance. No thread leaves it.</p>
+              <p className="hint">
+                From across the meadow it looked like the others. Stand here and the basin is
+                cracked — no water reaches it.
+              </p>
             </Fold>
           )}
           {!rejected && p.deepening && (
             <button className="pill action" onClick={() => onDeepen(p.id)}>
-              go deeper into this world ↓
+              stay a while longer ↓
             </button>
           )}
         </>
@@ -267,11 +253,11 @@ function Chamber({
           <p className="body-text">{d.body}</p>
           <p className="hint">
             {practiceUnlocked
-              ? 'Depth resolves. Far below the sun, a gate stands open.'
-              : 'Depth resolves into practice once a world has truly landed.'}
+              ? 'Depth resolves. Down at the shore, the jetty lanterns are burning.'
+              : 'Depth resolves into practice once a place has truly landed.'}
           </p>
           <button className="pill action" onClick={() => onSurface(p.id)}>
-            ↑ back to the surface of this world
+            ↑ back to this place
           </button>
         </>
       );
@@ -280,13 +266,12 @@ function Chamber({
 
   return (
     <div
-      className="vchamber"
+      className="vchamber retreat-chamber"
       key={JSON.stringify(refNode)}
       role="dialog"
       aria-modal="true"
       aria-label={title}
       onClick={(e) => {
-        // tapping the open space above the reading surface releases orbit
         if (e.target === e.currentTarget) onRelease();
       }}
       onKeyDown={(e) => {
@@ -303,17 +288,18 @@ function Chamber({
         {body}
       </div>
       <button className="vrelease" onClick={onRelease}>
-        ← release · return to space
+        ← stand up · walk on
       </button>
     </div>
   );
 }
 
-// ---------- the voyage ----------
+// ---------- the retreat ----------
 
-export default function VoyageView({ session }: { session: SessionData }) {
+export default function RetreatView({ session }: { session: SessionData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<VoyageEngine | null>(null);
+  const labelRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<RetreatEngine | null>(null);
   const { state, practiceUnlocked, select, arrive } = useSessionState(session);
   const [chamber, setChamber] = useState<NodeRef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -321,13 +307,12 @@ export default function VoyageView({ session }: { session: SessionData }) {
   const [arrivalOpen, setArrivalOpen] = useState(false);
   const [ambience, setAmbience] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const [glFailed, setGlFailed] = useState(false);
   const hintTimer = useRef<number>(0);
-  // engine callbacks read these refs — never stale
   const stateRef = useRef(state);
   stateRef.current = state;
   const arrivedRef = useRef(false);
-  const sceneRef = useRef<VoyageTarget[]>([]);
-  const gateOriented = useRef(false);
+  const jettyOriented = useRef(false);
 
   const say = useCallback((text: string | null, ms = 7000) => {
     window.clearTimeout(hintTimer.current);
@@ -337,7 +322,7 @@ export default function VoyageView({ session }: { session: SessionData }) {
 
   const refFor = useCallback(
     (id: string): NodeRef | null => {
-      if (id === 'beacon') return { kind: 'complaint' };
+      if (id === 'trailhead') return { kind: 'complaint' };
       if (id === 'mechanism') return { kind: 'mechanism' };
       if (session.parallels.some((p) => p.id === id)) return { kind: 'parallel', id };
       return null;
@@ -348,151 +333,171 @@ export default function VoyageView({ session }: { session: SessionData }) {
   // engine lifecycle — once per mount
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setReduced(reduced);
-    const { targets, camPos, lookAt } = buildTargets(session);
-    sceneRef.current = targets;
-    const engine = new VoyageEngine(canvas, {
-      onCapture: (id) => {
-        if (id === 'gate') {
-          if (arrivedRef.current) {
-            // revisiting the gate after arrival re-opens the practice —
-            // never strand the camera in a UI-less orbit
-            setArrivalOpen(true);
-            engine.release();
+    const labels = labelRef.current;
+    if (!canvas || !labels) return;
+    const reducedNow = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setReduced(reducedNow);
+    const spots = buildSpots(session);
+    let engine: RetreatEngine;
+    try {
+      engine = new RetreatEngine(canvas, labels, {
+        onCapture: (id) => {
+          if (id === 'jetty') {
+            if (arrivedRef.current) {
+              setArrivalOpen(true);
+              engine.release();
+              return;
+            }
+            arrivedRef.current = true;
+            arrive();
+            const visitedAccepted = stateRef.current.visitedParallels.filter(
+              (pid) => session.parallels.find((p) => p.id === pid)?.status === 'accepted'
+            );
+            say(null);
+            setChamber(null);
+            duskNature();
+            engine.reveal(visitedAccepted);
             return;
           }
-          arrivedRef.current = true;
-          arrive();
-          const visitedAccepted = stateRef.current.visitedParallels.filter(
-            (pid) => session.parallels.find((p) => p.id === pid)?.status === 'accepted'
-          );
+          const ref = refFor(id);
+          if (!ref) return;
           say(null);
-          setChamber(null);
-          engine.reveal(visitedAccepted);
-          return;
-        }
-        const ref = refFor(id);
-        if (!ref) return;
-        say(null);
-        select(ref);
-        setChamber(ref);
-        if (ref.kind === 'parallel') {
-          const p = session.parallels.find((x) => x.id === ref.id)!;
-          tintAmbience(p.status === 'rejected' ? rejectedAtmosphere : lineageAtmosphere[p.lineage]);
-        } else {
-          tintAmbience(null);
-        }
-      },
-      onHint: (h) => say(h),
-      onLockedTap: () => say('the gate is sealed — a world must truly land first'),
-      onRevealDone: () => setArrivalOpen(true),
-    });
-    engine.reducedMotion = reduced;
+          select(ref);
+          setChamber(ref);
+          if (ref.kind === 'parallel') {
+            const p = session.parallels.find((x) => x.id === ref.id)!;
+            tintNature(p.status === 'rejected' ? rejectedAtmosphere : lineageAtmosphere[p.lineage]);
+          } else {
+            tintNature(null);
+          }
+        },
+        onHint: (h) => say(h),
+        onLockedTap: () =>
+          say('the jetty is dark — a place must truly land before the water', 7000),
+        onRevealDone: () => setArrivalOpen(true),
+        onStep: () => natureStep(),
+        onLakeCloseness: (k) => setLakeCloseness(k),
+      });
+    } catch {
+      // WebGL unavailable (old device, disabled) — offer the other doors in
+      setGlFailed(true);
+      return;
+    }
+    engine.reducedMotion = reducedNow;
     engineRef.current = engine;
-    engine.start(targets, camPos, lookAt);
+    engine.start(spots, seedFrom(session.id));
     const onResize = () => engine.resize();
     window.addEventListener('resize', onResize);
-    const introTimer = window.setTimeout(() => setIntro(false), reduced ? 400 : 3400);
-    // test/dev hook — lets automation fly the ship deterministically
-    (window as unknown as Record<string, unknown>).__voyageTravel = (id: string) =>
-      engine.travelTo(id);
-    (window as unknown as Record<string, unknown>).__voyageEngine = engine;
+    const introTimer = window.setTimeout(() => setIntro(false), reducedNow ? 400 : 3400);
+    // test/dev hook — lets automation walk deterministically
+    (window as unknown as Record<string, unknown>).__retreatWalk = (id: string) =>
+      engine.walkToSpot(id);
+    (window as unknown as Record<string, unknown>).__retreatEngine = engine;
     return () => {
       window.removeEventListener('resize', onResize);
       window.clearTimeout(introTimer);
       window.clearTimeout(hintTimer.current);
-      delete (window as unknown as Record<string, unknown>).__voyageTravel;
-      delete (window as unknown as Record<string, unknown>).__voyageEngine;
-      tintAmbience(null); // never leave the shared bed tinted to a chamber
+      delete (window as unknown as Record<string, unknown>).__retreatWalk;
+      delete (window as unknown as Record<string, unknown>).__retreatEngine;
+      disposeNature();
       engine.dispose();
       engineRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // session arc → target states (incl. the breathing cue on what comes next)
+  // session arc → spot states (lanterns light as the arc surfaces places)
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    e.patchTarget('beacon', {
+    e.patchSpot('trailhead', {
       visited: state.complaintTouched,
       cue: !state.complaintTouched,
     });
-    e.patchTarget('mechanism', {
-      dim: !state.complaintTouched,
+    e.patchSpot('mechanism', {
       active: state.complaintTouched,
+      lit: state.complaintTouched,
       visited: state.mechanismRevealed,
       cue: state.complaintTouched && !state.mechanismRevealed,
     });
     for (const p of session.parallels) {
-      e.patchTarget(p.id, {
-        dim: !state.mechanismRevealed,
+      e.patchSpot(p.id, {
         active: state.mechanismRevealed,
+        lit: state.mechanismRevealed,
         visited: state.visitedParallels.includes(p.id),
       });
     }
-    e.patchTarget('gate', {
-      dim: !practiceUnlocked,
+    e.patchSpot('jetty', {
+      lit: practiceUnlocked,
       locked: !practiceUnlocked,
       cue: practiceUnlocked && !state.arrived,
-      subtitle: practiceUnlocked ? 'the practice gate — enter' : 'the practice gate · sealed',
+      subtitle: practiceUnlocked ? 'the jetty — lanterns lit' : 'the jetty · dark',
     });
+    // the day leans on as the session deepens — time passing, not a reward
+    let phase = 0.12;
+    if (state.complaintTouched) phase = 0.2;
+    if (state.mechanismRevealed) phase = 0.32;
+    phase += Math.min(state.visitedParallels.length * 0.08, 0.32);
+    if (practiceUnlocked) phase = Math.max(phase, 0.7);
+    if (state.arrived) phase = 1;
+    e.setDayPhase(phase);
   }, [state, practiceUnlocked, session]);
 
   const releaseChamber = useCallback(() => {
     const wasKind = chamber?.kind;
     setChamber(null);
-    tintAmbience(null);
+    tintNature(null);
     const e = engineRef.current;
     e?.release();
-    // the arc's stage directions: the gaze settles onto what comes next, the
-    // hint stays until it's acted on (a 7-second flash was findable by no one)
+    // stage directions: the gaze settles onto what the arc opened next, and
+    // the hint stays until acted on (the Voyage lesson — flashes find no one)
     const s = stateRef.current;
     if (wasKind === 'complaint' && !s.mechanismRevealed) {
-      e?.orientToward(SUN_POS);
+      const p = e?.getSpotPos('mechanism');
+      if (p) e?.orientToward(p);
       say(
         reduced
-          ? 'something is running underneath — tap the sun'
-          : 'something is running underneath — the sun ahead',
+          ? 'something runs beneath this — tap the spring in the meadow below'
+          : 'something runs beneath this — follow the path down to the spring',
         0
       );
     } else if (wasKind === 'mechanism' && s.visitedParallels.length === 0) {
-      const firstWorld = sceneRef.current.find((t) => t.kind === 'world');
-      if (firstWorld) e?.orientToward(firstWorld.pos);
+      const first = session.parallels[0];
+      const p = first ? e?.getSpotPos(first.id) : null;
+      if (p) e?.orientToward(p);
       say(
         reduced
-          ? 'worlds have surfaced around the sun — tap one to approach'
-          : 'worlds have surfaced around the sun — fly to one, or look around',
+          ? 'places have woken around the meadow — tap one to walk there'
+          : 'places have woken around the meadow — walk to one, or let ◉ carry you',
         0
       );
     } else if (practiceUnlocked && !s.arrived) {
-      if (!gateOriented.current) {
-        gateOriented.current = true;
-        e?.orientToward(GATE_POS);
+      if (!jettyOriented.current) {
+        jettyOriented.current = true;
+        const p = e?.getSpotPos('jetty');
+        if (p) e?.orientToward(p);
         say(
           reduced
-            ? 'beyond the sun, a golden gate stands open — tap it when ready'
-            : 'beyond the sun, a golden gate stands open — enter it when ready',
+            ? 'down at the shore the jetty lanterns are lit — tap it when ready'
+            : 'down at the shore the jetty lanterns are lit — walk out over the water when ready',
           0
         );
       }
     }
-  }, [chamber, practiceUnlocked, reduced, say]);
+  }, [chamber, practiceUnlocked, reduced, say, session]);
 
-  // first hint once the intro lifts — stays until the beacon is reached
+  // first hint once the intro lifts — stays until the trailhead is reached
   useEffect(() => {
-    if (!intro)
+    if (!intro && !glFailed)
       say(
         reduced
-          ? 'tap the pale light to approach it — or use the compass ◉'
-          : 'drag or arrow-keys to look · tap the pale light — or let ◉ carry you',
+          ? 'tap the arch to begin — or use the compass ◉'
+          : 'drag or arrow-keys to look · tap the arch ahead — or let ◉ carry you',
         0
       );
-  }, [intro, reduced, say]);
+  }, [intro, glFailed, reduced, say]);
 
-  // the atmosphere of the chamber currently open (null outside lineage rooms)
+  // the atmosphere of the open chamber (wash over the whole scene)
   const chamberAtmo = useMemo(() => {
     if (chamber?.kind === 'parallel' || chamber?.kind === 'deepening') {
       const pid = chamber.kind === 'parallel' ? chamber.id : chamber.parallelId;
@@ -510,11 +515,13 @@ export default function VoyageView({ session }: { session: SessionData }) {
     [chamberAtmo]
   );
 
-  // targets the session arc has surfaced — the keyboard/screen-reader path
+  // every place the arc has opened — the keyboard/screen-reader path
   const reachable = useMemo(() => {
-    const list: { id: string; label: string }[] = [{ id: 'beacon', label: 'the complaint — the surface' }];
+    const list: { id: string; label: string }[] = [
+      { id: 'trailhead', label: 'the trailhead — the surface' },
+    ];
     if (state.complaintTouched)
-      list.push({ id: 'mechanism', label: `${session.mechanism.name} — the mechanism` });
+      list.push({ id: 'mechanism', label: `${session.mechanism.name} — the spring` });
     if (state.mechanismRevealed)
       for (const p of session.parallels)
         list.push({
@@ -524,19 +531,35 @@ export default function VoyageView({ session }: { session: SessionData }) {
           }`,
         });
     if (practiceUnlocked && !state.arrived)
-      list.push({ id: 'gate', label: `${session.practice.name} — the practice gate` });
+      list.push({ id: 'jetty', label: `${session.practice.name} — the jetty` });
     return list;
   }, [state, practiceUnlocked, session]);
 
-  return (
-    <div className="voyage" style={wash}>
-      <canvas ref={canvasRef} className="voyage-canvas" aria-hidden />
+  if (glFailed) {
+    return (
+      <div className="retreat-fallback">
+        <p className="eyebrow">the retreat needs WebGL</p>
+        <p>This device can’t open the valley. The same session is walkable as:</p>
+        <div className="retreat-fallback-links">
+          <Link href={`/voyage/${session.id}`}>✦ the voyage</Link>
+          <Link href={`/session/${session.id}`}>◈ the bird’s-eye maps</Link>
+          <Link href="/">← the atlas</Link>
+        </div>
+      </div>
+    );
+  }
 
-      {/* the same space, navigable without a pointer — visually hidden */}
-      <nav className="v-sr-nav" aria-label="Places in this voyage">
+  return (
+    <div className="voyage retreat" style={wash}>
+      <canvas ref={canvasRef} className="voyage-canvas" aria-hidden />
+      <canvas ref={labelRef} className="retreat-labels" aria-hidden />
+      <div className="retreat-vignette" aria-hidden />
+
+      {/* the same valley, walkable without a pointer — visually hidden */}
+      <nav className="v-sr-nav" aria-label="Places in this retreat">
         {reachable.map((t) => (
-          <button key={t.id} onClick={() => engineRef.current?.travelTo(t.id)}>
-            travel to {t.label}
+          <button key={t.id} onClick={() => engineRef.current?.walkToSpot(t.id)}>
+            walk to {t.label}
           </button>
         ))}
       </nav>
@@ -548,19 +571,19 @@ export default function VoyageView({ session }: { session: SessionData }) {
         <span className="vhud-title">“{session.surfaceComplaint}”</span>
         <button
           className={`icon-btn${ambience ? ' active' : ''}`}
-          aria-label={ambience ? 'Turn ambient sound off' : 'Turn ambient sound on'}
+          aria-label={ambience ? 'Turn the valley sound off' : 'Turn the valley sound on'}
           aria-pressed={ambience}
           onClick={async () => {
-            const on = await toggleAmbience();
+            engineRef.current?.noteActivity();
+            const on = await toggleNature();
             setAmbience(on);
-            // switching on inside a chamber joins that room's voicing
-            if (on && chamberAtmo) tintAmbience(chamberAtmo);
+            if (on && chamberAtmo) tintNature(chamberAtmo);
           }}
         >
           ♪
         </button>
-        <Link href={`/retreat/${session.id}`} className="vhud-btn" title="walk the retreat">
-          ⛰ retreat
+        <Link href={`/voyage/${session.id}`} className="vhud-btn" title="the voyage">
+          ✦ voyage
         </Link>
         <Link href={`/session/${session.id}`} className="vhud-btn" title="bird's-eye lenses">
           ◈ bird&rsquo;s-eye
@@ -568,13 +591,13 @@ export default function VoyageView({ session }: { session: SessionData }) {
       </header>
 
       {/* permanently mounted so aria-live announcements actually fire */}
-      <div className={`vhint${hint && !chamber ? '' : ' off'}`} aria-live="polite">
+      <div className={`vhint retreat-hint${hint && !chamber ? '' : ' off'}`} aria-live="polite">
         {hint ?? ''}
       </div>
 
-      {/* the compass — hold a chevron to look; the center carries you onward */}
+      {/* the compass — hold a chevron to look; the center walks you onward */}
       {!chamber && !arrivalOpen && (
-        <div className="vcompass" role="group" aria-label="Voyage compass">
+        <div className="vcompass" role="group" aria-label="Retreat compass">
           {(
             [
               ['up', '‹', 0, -1, 'look up'],
@@ -590,7 +613,7 @@ export default function VoyageView({ session }: { session: SessionData }) {
                 className="vc-go"
                 aria-label={label}
                 title="carry me onward"
-                onClick={() => engineRef.current?.travelNext()}
+                onClick={() => engineRef.current?.walkNext()}
               >
                 {glyph}
               </button>
@@ -643,9 +666,11 @@ export default function VoyageView({ session }: { session: SessionData }) {
             if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') setIntro(false);
           }}
         >
-          <span className="eyebrow t1">{session.painCategory} · a voyage</span>
+          <span className="eyebrow t1">{session.painCategory} · a retreat</span>
           <p className="threshold-quote t2">“{session.surfaceComplaint}”</p>
-          <span className="threshold-hint t3">you are adrift above it — drag to look, tap to approach</span>
+          <span className="threshold-hint t3">
+            you are standing at the trailhead — drag to look, tap to walk
+          </span>
         </div>
       )}
 
@@ -653,7 +678,10 @@ export default function VoyageView({ session }: { session: SessionData }) {
         <ArrivalOverlay
           session={session}
           visited={state.visitedParallels}
-          onDismiss={() => setArrivalOpen(false)}
+          onDismiss={() => {
+            setArrivalOpen(false);
+            say('dusk holds the valley — return to the atlas when ready', 0);
+          }}
         />
       )}
     </div>

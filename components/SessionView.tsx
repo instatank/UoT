@@ -247,6 +247,9 @@ export default function SessionView({ session }: { session: SessionData }) {
         <Link href={`/voyage/${session.id}`} className="back voyage-link" title="enter the voyage">
           ✦ voyage
         </Link>
+        <Link href={`/retreat/${session.id}`} className="back retreat-link" title="walk the retreat">
+          ⛰ retreat
+        </Link>
         <span className="title">“{session.surfaceComplaint}”</span>
         <span className="chip">{session.painCategory}</span>
         <button

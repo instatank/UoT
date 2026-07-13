@@ -17,6 +17,7 @@ A Next.js sandbox that runs one full Pain → Parallels → Payoff → Practice 
 
 AA signed off on the Voyage's first look ("intuitive, natural, interactive and immersive — good job") and directed: take the learnings, note the pending steps, build later. Queue item #1 — **the atmosphere pass** — is now built and merged to `main`/production (see "The atmosphere pass" under the Voyage section below), **but AA has not visually reviewed it yet** — it shipped to give a planning session full context, so its on-device review is still owed and is the first open item. Still open, in rough priority order:
 
+0. **AA's review of the Retreat** (branch `claude/wellness-retreat-ui-design-oeg8mp`, not merged) — the photoreal first-person valley presentation, built 2026-07-13 at AA's ask. Needs AA's eyes and a real-GPU device: Playwright verification ran on a software rasterizer (worst case) where the adaptive tiers engage; on-device feel, thermals, and walking pace are open questions.
 1. **AA's visual/on-device review of the atmosphere pass** — it's live in production but has never had AA's eyes on it moving. Confirm it feels right (nebulae, thread dust, approach detail, lineage skyboxes) and doesn't thermal-throttle real phones; anything wrong lands as new commits on `main`. This overlaps #5 (real-device pass) — do them together.
 2. **Pacing dials** — AA calls current pacing "decent, we'll refine later." The dials are named in code: idle-drift delay (7 s) and turn rate (0.35 rad/s) in `engine.ts` `freeFlight`; gaze settle (1.7 s, `orientToward`); cruise/thrust (`CRUISE`/`THRUST_MAX`); orbit speed; autopilot duration. Tune with AA on-device, not in review.
 3. **Deferred review findings** — ranked list at the end of NOTES.md "Adversarial review pass" (thread near-plane clipping, orbit-entry continuity, label caching, DPR-3 label softness, StrictMode double-write in `state.ts`, chamber focus restore; the two per-frame-gradient findings — Christianity world beams, gate pillar — were cashed in during the atmosphere pass).
@@ -42,6 +43,17 @@ Queue item #1 after AA's sign-off (AA: "totally with you"), layered onto the nav
 - **Worlds grow richer on approach** — a `detail` factor (0→1 with screen radius) resolves per-lineage structure (Stoic inner keep + watch-fires, Buddhist rim ticks + hub, Gītā brazier + rising sparks, Christian slanted beams + high lights, Sufi counter-turning arm, Taoist eddies, neuro synapse terminals) plus a generic tilted orbital band with two companions. The **mirage inverts it**: up close its ring gaps widen, the glitch-double shows more often, static slices the disc — it thins where real worlds deepen.
 - **Per-lineage skyboxes** — nearing a world its air pours in: the backdrop tints toward the lineage hue, a wide `skySprite` wash floods the sky behind the stars, and the near-field dust breathes the same color (cached quantized tint strings — no per-frame gradient or string churn).
 - **Perf discipline**: every gradient is a pre-rendered sprite; hot loops stay allocation-free; the adaptive quality drop now also thins wisps/streams/nebulae; a 3 s warm-up grace stops first-paint sag from permanently degrading the sky; the two flagged per-frame gradients (Christianity beams, gate pillar) moved to a shared soft-edged `beamSprite`. Under reduced motion the streams are skipped and world/atmosphere time is frozen (worlds previously kept rotating — fixed en route). Cost was gated on a headless A/B against the pre-atmosphere build, not a feeling — method and numbers in NOTES.md.
+
+## The Retreat (photoreal valley pass — this branch, not yet merged)
+
+AA's direction (2026-07-13): another UI design — "a realistic wellness nature retreat experience… photo-realistic, 3D… as if the user is moving about this space," using voice, image, animation, and text together. Built as a **fifth presentation of the same session state machine** at **`/retreat/[id]`** (linked from the session header `⛰ retreat` and the Voyage HUD; Atlas doors still open the Voyage). Hand-rolled **WebGL** — raw browser API, `package.json` untouched.
+
+The session as a *place*: you arrive at a **trailhead arch** (the complaint), walk a worn trail down to a **spring in the meadow** (the mechanism — every trail radiates from it, so all journeys pass through the mechanism, as on the maps), visit the **lineage sites** that wake around it (Stoic monolith + bench, Buddhist stone stack, Gītā flame plinth, Christian standing arch with light shaft, Sufi spiral terrace, Taoist mirror pool, a clean observation deck for the empirical frame — symbolic structures only, decision 7), pass the **dry hollow** (the rejected parallel: cracked basin, dead tree, an ember lantern that gutters — it *runs dry* where real sites deepen), and when a place has truly landed the **jetty lanterns** light and the walk ends over water. Arrival: dusk falls, the camera rises off the dock, and the walked figure glows below — then the standard ArrivalOverlay/Thread.
+
+- **`lib/retreat/engine.ts`** — dependency-free WebGL world: procedural terrain heightfield (polar mesh, dense where you walk; spot pads flattened in; trails raised into causeways where they cross wet dips), atmospheric sky (sun/clouds/day-phase keyframes — the light leans from morning toward dusk as the session deepens), reflective lake + mirror pools (one sky function, rendered and reflected), billboard trees/grass painted onto canvas atlases at load, lantern point-lights + glow sprites (cue lanterns breathe; a soft column marks the arc's next destination), pollen/fireflies, first-person walk controller (drag/arrows look, tap-to-walk with ray-marched ground picking, WASD, trail-following autopilot with a stall watchdog, head bob + footfall events, tree collision, idle auto-walk after 10 s), 2D label overlay canvas (the Voyage's etched-label language), adaptive quality (two tiers: DPR 1.0, then 0.72 + grass/motes off), reduced-motion = instant cuts + frozen world time. View convention matches the Voyage (yaw 0 = +z, east on screen-right; face culling off — see `viewProj()` note).
+- **`lib/retreat/nature.ts`** — generated outdoor soundscape (same contract as `ambience.ts`: gesture-start, off by default): valley wind with incommensurate gust LFOs + leaf shimmer, synthesized birdsong motifs at irregular intervals, lake water that swells near the shore (engine feeds proximity), faint footfalls on walk cadence; chamber tint = quiet lineage-interval pad + wind ceiling shift, birds hold their song while reading; dusk settles everything at arrival.
+- **`components/RetreatView.tsx`** — mirrors VoyageView: same state machine, chambers (reusing `.vchamber` with a warm `retreat-chamber` glass), persistent stage-direction hints, gaze guidance after each release, compass (◉ = walk onward), sr-nav keyboard path, intro threshold, WebGL-unavailable fallback linking to the other presentations.
+- Verified via Playwright: full loop by test hook, by **real clicks only**, by **compass alone** (390×844 touch), and by **keyboard sr-nav under reduced motion**; all three seed sessions lay out; zero console errors. Headless SwiftShader runs it at the lowest quality tier (~worst-case old phone); real-GPU/on-device feel is untested — same caveat as every pass.
 
 ## The world layer (immersive pass)
 
@@ -144,11 +156,14 @@ lib/
   ambience.ts                  — generated WebAudio drone, toggleable + lineage re-voicing
   voyage/engine.ts             — first-person Canvas-3D flight engine (no deps) + atmosphere layers
   voyage/worlds.ts             — per-lineage world painters + glow/nebula/sky/beam sprites
+  retreat/engine.ts            — first-person WebGL valley (terrain/sky/water/trees/walk/lanterns)
+  retreat/nature.ts            — generated outdoor soundscape (wind/birds/water/footfalls)
   flags.ts                     — doorsEnabled
   naming.ts                    — crisis floor, heuristic classifier, miss log (isomorphic)
   thread.ts                    — mintThread, wrapText, exportSvgAsPng
 components/
   VoyageView.tsx               — voyage shell: scene, chambers, HUD, arrival
+  RetreatView.tsx              — retreat shell: valley, chambers, hints, compass, arrival
   Starfield.tsx                — canvas night sky (twinkle, parallax, rare meteor)
   LineageGlyph.tsx             — stroke-only lineage seals (HTML svg + in-SVG variants)
   AtlasHome.tsx                — the Atlas: sky, constellations, doors, door-pass transition
@@ -170,6 +185,7 @@ app/
   door/page.tsx                — the Door (flag-gated)
   api/naming/route.ts          — classification endpoint (the only server compute)
   voyage/[id]/page.tsx         — the Voyage (SSG; Atlas doors open here)
+  retreat/[id]/page.tsx        — the Retreat (SSG; linked from session header + Voyage HUD)
   session/[id]/page.tsx        — statically generated session view
 ```
 
