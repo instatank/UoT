@@ -564,6 +564,9 @@ export default function VoyageView({ session }: { session: SessionData }) {
         >
           ♪
         </button>
+        <Link href={`/retreat/${session.id}`} className="vhud-btn" title="walk the retreat">
+          ⛰ retreat
+        </Link>
         <Link href={`/session/${session.id}`} className="vhud-btn" title="bird's-eye lenses">
           ◈ bird&rsquo;s-eye
         </Link>
