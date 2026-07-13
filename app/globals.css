@@ -1602,6 +1602,9 @@ ol.steps li::before {
 }
 
 .vhud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1633,11 +1636,16 @@ ol.steps li::before {
   text-align: center;
 }
 
-/* the quiet stage direction */
+/* the quiet stage direction. Centered with inset-auto margins, not a 50%
+   offset — an absolutely positioned box shrink-fits against the space left
+   of it, so left:50% caps the pill at half the viewport and wraps it into
+   a tall lozenge on phones. */
 .vhint {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: max-content;
   bottom: calc(26px + env(safe-area-inset-bottom));
   font-size: 11.5px;
   letter-spacing: 0.16em;
@@ -1848,8 +1856,11 @@ ol.steps li::before {
   /* thumb-sized HUD controls */
   .vhud-btn {
     min-height: 44px;
-    display: inline-flex;
-    align-items: center;
+  }
+
+  .vhud-top .icon-btn {
+    width: 44px;
+    height: 44px;
   }
 
   /* the stage direction moves under the HUD — the bottom belongs to the
@@ -1870,6 +1881,51 @@ ol.steps li::before {
     max-height: 58vh;
     max-height: 58dvh;
     padding: 20px 20px 14px;
+  }
+}
+
+/* touch targets follow the pointer, not the width — a landscape phone is
+   844px wide and still a thumb. Keeps the 44px floor on every touch device
+   regardless of orientation. */
+@media (pointer: coarse) {
+  .vhud-btn {
+    min-height: 44px;
+  }
+
+  .vhud-top .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .vc-btn,
+  .vc-go {
+    width: 46px;
+    height: 46px;
+  }
+
+  .pill.listen {
+    min-height: 44px;
+  }
+}
+
+/* narrow phones: four spelled-out HUD pills don't fit — the words fold away
+   and the glyphs stand alone as circles (titles/aria-labels still carry the
+   names). 480px is where "atlas · voyage · bird's-eye" starts shearing off
+   the right edge. */
+@media (max-width: 480px) {
+  .vhud-btn {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .vhud-btn .vhud-label {
+    display: none;
+  }
+
+  .vhud-btn .vhud-glyph {
+    font-size: 14px;
   }
 }
 
