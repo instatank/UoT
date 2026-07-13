@@ -592,15 +592,20 @@ export default function RetreatView({ session }: { session: SessionData }) {
     }
   }, [chamber, practiceUnlocked, reduced, say, session]);
 
-  // first hint once the intro lifts — stays until the trailhead is reached
+  // first hint once the intro lifts — stays until the trailhead is reached.
+  // Phones get thumb words; "arrow-keys" belongs to fine pointers only.
   useEffect(() => {
-    if (!intro && !glFailed)
+    if (!intro && !glFailed) {
+      const touch = window.matchMedia('(pointer: coarse)').matches;
       say(
         reduced
           ? 'tap the arch to begin — or use the compass ◉'
-          : 'drag or arrow-keys to look · tap the arch ahead — or let ◉ carry you',
+          : touch
+            ? 'drag to look · tap the arch ahead — or let ◉ carry you'
+            : 'drag or arrow-keys to look · tap the arch ahead — or let ◉ carry you',
         0
       );
+    }
   }, [intro, glFailed, reduced, say]);
 
   // the atmosphere of the open chamber (wash over the whole scene)
@@ -671,8 +676,9 @@ export default function RetreatView({ session }: { session: SessionData }) {
       </nav>
 
       <header className="vhud-top">
-        <Link href="/" className="vhud-btn" title="the Atlas">
-          ← atlas
+        <Link href="/" className="vhud-btn" title="the Atlas" aria-label="the Atlas">
+          <span className="vhud-glyph">←</span>
+          <span className="vhud-label">atlas</span>
         </Link>
         <span className="vhud-title">“{session.surfaceComplaint}”</span>
         <button
@@ -688,11 +694,23 @@ export default function RetreatView({ session }: { session: SessionData }) {
         >
           ♪
         </button>
-        <Link href={`/voyage/${session.id}`} className="vhud-btn" title="the voyage">
-          ✦ voyage
+        <Link
+          href={`/voyage/${session.id}`}
+          className="vhud-btn"
+          title="the voyage"
+          aria-label="the voyage"
+        >
+          <span className="vhud-glyph">✦</span>
+          <span className="vhud-label">voyage</span>
         </Link>
-        <Link href={`/session/${session.id}`} className="vhud-btn" title="bird's-eye lenses">
-          ◈ bird&rsquo;s-eye
+        <Link
+          href={`/session/${session.id}`}
+          className="vhud-btn"
+          title="bird's-eye lenses"
+          aria-label="bird's-eye lenses"
+        >
+          <span className="vhud-glyph">◈</span>
+          <span className="vhud-label">bird&rsquo;s-eye</span>
         </Link>
       </header>
 
@@ -729,8 +747,14 @@ export default function RetreatView({ session }: { session: SessionData }) {
                 className={`vc-btn vc-${key}`}
                 aria-label={label}
                 onPointerDown={(e) => {
-                  e.currentTarget.setPointerCapture(e.pointerId);
+                  // look first, capture second — capture throws on synthetic
+                  // pointers (AT, automation) and must never kill the look
                   engineRef.current?.setLookHeld(lx, ly);
+                  try {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  } catch {
+                    /* no active pointer to capture — pointerup still lands on the button */
+                  }
                 }}
                 onPointerUp={() => engineRef.current?.setLookHeld(0, 0)}
                 onPointerCancel={() => engineRef.current?.setLookHeld(0, 0)}

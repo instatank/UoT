@@ -547,8 +547,9 @@ export default function VoyageView({ session }: { session: SessionData }) {
       </nav>
 
       <header className="vhud-top">
-        <Link href="/" className="vhud-btn" title="the Atlas">
-          ← atlas
+        <Link href="/" className="vhud-btn" title="the Atlas" aria-label="the Atlas">
+          <span className="vhud-glyph">←</span>
+          <span className="vhud-label">atlas</span>
         </Link>
         <span className="vhud-title">“{session.surfaceComplaint}”</span>
         <button
@@ -564,11 +565,24 @@ export default function VoyageView({ session }: { session: SessionData }) {
         >
           ♪
         </button>
-        <Link href={`/retreat/${session.id}`} className="vhud-btn" title="walk the retreat">
-          ⛰ retreat
+        <Link
+          href={`/retreat/${session.id}`}
+          className="vhud-btn"
+          title="walk the retreat"
+          aria-label="walk the retreat"
+        >
+          {/* U+FE0E keeps the mountain a text glyph — iOS otherwise paints it as color emoji */}
+          <span className="vhud-glyph">⛰&#xfe0e;</span>
+          <span className="vhud-label">retreat</span>
         </Link>
-        <Link href={`/session/${session.id}`} className="vhud-btn" title="bird's-eye lenses">
-          ◈ bird&rsquo;s-eye
+        <Link
+          href={`/session/${session.id}`}
+          className="vhud-btn"
+          title="bird's-eye lenses"
+          aria-label="bird's-eye lenses"
+        >
+          <span className="vhud-glyph">◈</span>
+          <span className="vhud-label">bird&rsquo;s-eye</span>
         </Link>
       </header>
 
@@ -605,8 +619,14 @@ export default function VoyageView({ session }: { session: SessionData }) {
                 className={`vc-btn vc-${key}`}
                 aria-label={label}
                 onPointerDown={(e) => {
-                  e.currentTarget.setPointerCapture(e.pointerId);
+                  // look first, capture second — capture throws on synthetic
+                  // pointers (AT, automation) and must never kill the look
                   engineRef.current?.setLookHeld(lx, ly);
+                  try {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  } catch {
+                    /* no active pointer to capture — pointerup still lands on the button */
+                  }
                 }}
                 onPointerUp={() => engineRef.current?.setLookHeld(0, 0)}
                 onPointerCancel={() => engineRef.current?.setLookHeld(0, 0)}

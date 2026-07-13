@@ -255,7 +255,8 @@ export default function SessionView({ session }: { session: SessionData }) {
           ✦ voyage
         </Link>
         <Link href={`/retreat/${session.id}`} className="back retreat-link" title="walk the retreat">
-          ⛰ retreat
+          {/* U+FE0E keeps the mountain a text glyph — iOS otherwise paints it as color emoji */}
+          ⛰&#xfe0e; retreat
         </Link>
         <span className="title">“{session.surfaceComplaint}”</span>
         <span className="chip">{session.painCategory}</span>
