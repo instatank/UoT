@@ -43,6 +43,8 @@ export interface RetreatSpot {
   // filled by the engine at layout
   pos?: [number, number, number]; // ground center (y = terrain height)
   lantern?: [number, number, number];
+  seat?: [number, number]; // where the walker settles on capture
+  seatLook?: [number, number, number]; // what they settle facing
 }
 
 export interface RetreatCallbacks {
@@ -57,6 +59,10 @@ export interface RetreatCallbacks {
   onStep: () => void;
   /** 0..1 how near the shore the listener stands — throttled */
   onLakeCloseness: (k: number) => void;
+  /** nearest lit site's kind + closeness — sound neighborhoods */
+  onNearSite: (kind: string | null, k: number) => void;
+  /** 0..1 how near the waterfall roars */
+  onFallCloseness: (k: number) => void;
 }
 
 type Mode = 'free' | 'autopilot' | 'seated' | 'reveal' | 'revealed';
@@ -70,6 +76,9 @@ const LAKE_C: [number, number] = [0, 170];
 const SPRING_C: [number, number] = [0, 35];
 const PLAY_C: [number, number] = [0, 60];
 const DOCK = { x: 0, z0: 106, z1: 138, w: 1.5, h: 0.92 };
+// a rocky headland on the west shore — the waterfall drops straight off it
+// into the lake, visible across the water from the jetty
+const FALL_MOUND: [number, number] = [-94, 174];
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const smoothstep = (a: number, b: number, x: number) => {
@@ -430,7 +439,13 @@ const MESH_FS = `
   void main() {
     vec3 N = normalize(vNormal);
     float nd = max(dot(N, uSunDir), 0.0);
-    vec3 col = vColor * (uSunCol * nd * 1.15 + uAmb * (0.5 + 0.5 * N.y));
+    // open-air shade is bright: hemispheric ambient with real fill for
+    // vertical faces, plus a soft sky bounce opposite the sun — walls in
+    // shadow read as stone, not voids
+    float hemi = 0.68 + 0.32 * max(N.y, 0.0);
+    vec3 fillDir = normalize(vec3(-uSunDir.x, 0.3, -uSunDir.z));
+    float fill = max(dot(N, fillDir), 0.0) * 0.32;
+    vec3 col = vColor * (uSunCol * (nd * 1.1 + fill) + uAmb * hemi);
     col += vColor * lanternLight(vWorld, N);
     col = mix(col, uFogCol, fogAmount(length(vWorld - uCamPos)));
     gl_FragColor = vec4(col, 1.0);
@@ -442,15 +457,18 @@ const SPRITE_VS = `
   attribute vec2 aCorner;
   attribute vec2 aSize;
   attribute vec4 aColor; // rgb + alpha
+  attribute float aTex; // glyph atlas cell, or -1 for the procedural glow
   uniform mat4 uVP;
   uniform vec3 uCamRight;
   uniform vec3 uCamUp;
   varying vec2 vUv;
   varying vec4 vColor;
+  varying float vTex;
   void main() {
     vec3 p = aCenter + uCamRight * aCorner.x * aSize.x + uCamUp * aCorner.y * aSize.y;
     vUv = aCorner;
     vColor = aColor;
+    vTex = aTex;
     gl_Position = uVP * vec4(p, 1.0);
   }
 `;
@@ -459,11 +477,18 @@ const SPRITE_FS = `
   precision mediump float;
   varying vec2 vUv;
   varying vec4 vColor;
+  varying float vTex;
+  uniform sampler2D uGlyphs;
   void main() {
-    float r = length(vUv) * 2.0;
-    float core = pow(max(1.0 - r, 0.0), 2.2);
-    float halo = pow(max(1.0 - r * 0.72, 0.0), 3.5) * 0.4;
-    gl_FragColor = vec4(vColor.rgb * (core + halo) * vColor.a, 1.0);
+    if (vTex < -0.5) {
+      float r = length(vUv) * 2.0;
+      float core = pow(max(1.0 - r, 0.0), 2.2);
+      float halo = pow(max(1.0 - r * 0.72, 0.0), 3.5) * 0.4;
+      gl_FragColor = vec4(vColor.rgb * (core + halo) * vColor.a, 1.0);
+    } else {
+      vec4 c = texture2D(uGlyphs, vec2((vTex + vUv.x + 0.5) / 16.0, 0.5 - vUv.y));
+      gl_FragColor = c * vColor.a; // premultiplied — alpha pass fades whole
+    }
   }
 `;
 
@@ -715,30 +740,157 @@ function treeAtlas(rng: () => number): HTMLCanvasElement {
   return c;
 }
 
-/** A tuft of meadow grass with lit tips. */
-function grassTexture(rng: () => number): HTMLCanvasElement {
+/** Flora atlas — column 0: meadow grass; column 1: wildflowers. */
+function floraTexture(rng: () => number): HTMLCanvasElement {
   const S = 128;
   const c = document.createElement('canvas');
-  c.width = S;
+  c.width = S * 2;
   c.height = S;
   const ctx = c.getContext('2d')!;
   ctx.lineCap = 'round';
-  for (let i = 0; i < 30; i++) {
-    const x0 = S * 0.5 + (rng() - 0.5) * S * 0.5;
-    const lean = (rng() - 0.5) * 40;
-    const h = S * (0.5 + rng() * 0.48);
-    const lit = 0.4 + rng() * 0.6;
-    const grad = ctx.createLinearGradient(0, S, 0, S - h);
-    grad.addColorStop(0, `rgba(${Math.round(19 + lit * 10)},${Math.round(38 + lit * 15)},${11},0.95)`);
-    grad.addColorStop(1, `rgba(${Math.round(42 + lit * 26)},${Math.round(64 + lit * 28)},${Math.round(20 + lit * 10)},0.9)`);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.5 + rng() * 1.8;
-    ctx.beginPath();
-    ctx.moveTo(x0, S);
-    ctx.quadraticCurveTo(x0 + lean * 0.3, S - h * 0.6, x0 + lean, S - h);
-    ctx.stroke();
-  }
+  const blades = (ox: number, n: number, withFlowers: boolean) => {
+    const heads: [number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      const x0 = ox + S * 0.5 + (rng() - 0.5) * S * 0.5;
+      const lean = (rng() - 0.5) * 40;
+      const h = S * (0.5 + rng() * 0.48);
+      const lit = 0.4 + rng() * 0.6;
+      const grad = ctx.createLinearGradient(0, S, 0, S - h);
+      grad.addColorStop(0, `rgba(${Math.round(19 + lit * 10)},${Math.round(38 + lit * 15)},${11},0.95)`);
+      grad.addColorStop(1, `rgba(${Math.round(42 + lit * 26)},${Math.round(64 + lit * 28)},${Math.round(20 + lit * 10)},0.9)`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5 + rng() * 1.8;
+      ctx.beginPath();
+      ctx.moveTo(x0, S);
+      ctx.quadraticCurveTo(x0 + lean * 0.3, S - h * 0.6, x0 + lean, S - h);
+      ctx.stroke();
+      if (withFlowers && rng() < 0.55) heads.push([x0 + lean, S - h]);
+    }
+    // flower heads sit on top of their stems
+    const petals = ['rgba(238,232,220,0.95)', 'rgba(212,178,90,0.95)', 'rgba(186,152,196,0.95)', 'rgba(224,140,130,0.9)'];
+    for (const [hx, hy] of heads) {
+      ctx.fillStyle = petals[Math.floor(rng() * petals.length)];
+      const r = 2.2 + rng() * 2.4;
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(120,96,40,0.9)';
+      ctx.beginPath();
+      ctx.arc(hx, hy, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  blades(0, 30, false);
+  blades(S, 22, true);
   return c;
+}
+
+/** The lineage glyph medallions — the Atlas's pulling lights, planted in the
+ * world. Ten cells: stoa, stupa, flame, arch, circle, pool, deck, hollow,
+ * spring, (spare). Symbolic geometry only — decision 7. */
+function glyphAtlas(colors: Map<string, string>): { canvas: HTMLCanvasElement; cells: Map<string, number> } {
+  const CELL = 128;
+  const kinds = ['stoa', 'stupa', 'flame', 'arch', 'circle', 'pool', 'deck', 'hollow', 'spring'];
+  const c = document.createElement('canvas');
+  c.width = CELL * 16; // power of two — WebGL1 mipmaps insist
+  c.height = CELL;
+  const ctx = c.getContext('2d')!;
+  const cells = new Map<string, number>();
+  kinds.forEach((kind, i) => {
+    cells.set(kind, i);
+    const cx = i * CELL + CELL / 2;
+    const cy = CELL / 2;
+    const color = colors.get(kind) ?? '#cdd3dd';
+    const glow = ctx.createRadialGradient(cx, cy, 4, cx, cy, CELL * 0.48);
+    glow.addColorStop(0, `${color}e6`);
+    glow.addColorStop(0.55, `${color}55`);
+    glow.addColorStop(1, `${color}00`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(i * CELL, 0, CELL, CELL);
+    ctx.strokeStyle = 'rgba(248,246,238,0.95)';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    switch (kind) {
+      case 'stoa': // the citadel
+        ctx.strokeRect(cx - 26, cy - 26, 52, 52);
+        ctx.strokeRect(cx - 12, cy - 12, 24, 24);
+        break;
+      case 'stupa': { // the wheel
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          ctx.moveTo(cx + Math.cos(a) * 7, cy + Math.sin(a) * 7);
+          ctx.lineTo(cx + Math.cos(a) * 30, cy + Math.sin(a) * 30);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+        break;
+      }
+      case 'flame': // the flame
+        ctx.moveTo(cx, cy - 32);
+        ctx.quadraticCurveTo(cx + 24, cy - 2, cx + 12, cy + 22);
+        ctx.quadraticCurveTo(cx + 6, cy + 32, cx, cy + 32);
+        ctx.quadraticCurveTo(cx - 6, cy + 32, cx - 12, cy + 22);
+        ctx.quadraticCurveTo(cx - 24, cy - 2, cx, cy - 32);
+        break;
+      case 'arch': // the cross
+        ctx.moveTo(cx, cy - 30);
+        ctx.lineTo(cx, cy + 30);
+        ctx.moveTo(cx - 20, cy - 10);
+        ctx.lineTo(cx + 20, cy - 10);
+        break;
+      case 'circle': { // the spiral
+        let r = 30;
+        let a0 = -Math.PI / 2;
+        ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+        for (let k = 1; k <= 44; k++) {
+          const a = a0 + (k / 44) * Math.PI * 4.4;
+          const rr = 30 - (k / 44) * 24;
+          ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+        }
+        void a0;
+        break;
+      }
+      case 'pool': // the watercourse
+        for (const oy of [-14, 0, 14]) {
+          ctx.moveTo(cx - 26, cy + oy);
+          ctx.quadraticCurveTo(cx - 13, cy + oy - 9, cx, cy + oy);
+          ctx.quadraticCurveTo(cx + 13, cy + oy + 9, cx + 26, cy + oy);
+        }
+        break;
+      case 'deck': { // the neuron
+        ctx.arc(cx - 6, cy + 6, 9, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        for (const [ex, ey] of [
+          [22, -22],
+          [26, 4],
+          [10, 26],
+        ]) {
+          ctx.moveTo(cx - 6 + 8, cy + 6 - 3);
+          ctx.lineTo(cx + ex, cy + ey);
+        }
+        break;
+      }
+      case 'hollow': // the broken ring
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2;
+          ctx.moveTo(cx + Math.cos(a) * 28, cy + Math.sin(a) * 28);
+          ctx.arc(cx, cy, 28, a, a + Math.PI / 5);
+        }
+        break;
+      case 'spring': // the source — two rings
+        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+        break;
+    }
+    ctx.stroke();
+  });
+  return { canvas: c, cells };
 }
 
 // ---------- the engine ----------
@@ -763,6 +915,7 @@ interface GlowSprite {
   g: number;
   b: number;
   a: number;
+  tex?: number; // glyph atlas cell; undefined = procedural glow
 }
 
 export class RetreatEngine {
@@ -838,8 +991,6 @@ export class RetreatEngine {
   private grassVertCount = 0;
   private structVertCount = 0;
   private waters: WaterBody[] = [];
-  private spriteData = new Float32Array(0);
-  private spriteCapacity = 0;
   private lineData = new Float32Array(0);
   private lineCount = 0;
 
@@ -848,6 +999,11 @@ export class RetreatEngine {
   private paths: { x: number; z: number }[][] = [];
   // per-spot trail, spring end first — the walker's route network
   private spotPaths = new Map<string, { x: number; z: number }[]>();
+  private moatC: [number, number] | null = null;
+  private glyphCell = new Map<string, number>();
+  private fallTop: [number, number, number] = [0, 0, 0];
+  private fallBase: [number, number, number] = [0, 0, 0];
+  private seatGlide: { x: number; z: number } | null = null;
 
   // particles
   private motes: { x: number; y: number; z: number; ph: number }[] = [];
@@ -900,6 +1056,10 @@ export class RetreatEngine {
     h = mix(h, 3.0, (1 - smoothstep(16, 52, dm)) * 0.92);
     const dt = Math.hypot(x, z + 58);
     h = mix(h, 6.0, (1 - smoothstep(12, 42, dt)) * 0.9);
+    // the waterfall's headland — a rocky shoulder shoved into the lake's
+    // west edge, steep on the water side
+    const dmound = Math.hypot(x - FALL_MOUND[0], z - FALL_MOUND[1]);
+    h += (1 - smoothstep(4, 20, dmound)) * 9.5;
     return h;
   }
 
@@ -910,6 +1070,13 @@ export class RetreatEngine {
     for (const f of this.flatteners) {
       const d = Math.hypot(x - f.x, z - f.z);
       if (d < f.outer) h = mix(f.target, h, smoothstep(f.inner, f.outer, d));
+    }
+    // the fortress keeps a dry moat — the trail's causeway is the only bridge
+    if (this.moatC) {
+      const d = Math.hypot(x - this.moatC[0], z - this.moatC[1]);
+      if (d > 5.4 && d < 11.6) {
+        h -= smoothstep(5.8, 7.2, d) * (1 - smoothstep(8.8, 10.6, d)) * 1.5;
+      }
     }
     // trails stay dry: where a trail crosses a wet dip, the tread rises out
     // of it as a causeway — the fbm is free to bog the meadow, but never the
@@ -1028,6 +1195,63 @@ export class RetreatEngine {
       const lanternY =
         s.kind === 'trailhead' ? 2.9 : s.kind === 'jetty' ? 1.6 : s.kind === 'spring' ? 1.3 : 1.9;
       s.lantern = [p[0], p[1] + lanternY, p[2]];
+    }
+
+    // seats: where the walker settles on capture, and what they settle
+    // facing — each site receives you differently (AA: "a subtly different
+    // experience" per stop). The glide there happens while seated.
+    for (const s of this.spots) {
+      const p = s.pos!;
+      const dxs = SPRING_C[0] - p[0];
+      const dzs = SPRING_C[1] - p[2];
+      const l = Math.hypot(dxs, dzs) || 1;
+      const tx = dxs / l; // unit vector toward the spring (the approach side)
+      const tz = dzs / l;
+      switch (s.kind) {
+        case 'trailhead': // under the arch, looking through it at the valley
+          s.seat = [p[0], p[2] - 2.4];
+          s.seatLook = [p[0], p[1] + 2.2, p[2] + 6];
+          break;
+        case 'spring': // at the basin's south lip, looking over the water
+          s.seat = [p[0], p[2] - 2.6];
+          s.seatLook = [p[0], p[1] + 0.5, p[2]];
+          break;
+        case 'stoa': // inside the fortress walls, before the inscribed stele
+          s.seat = [p[0] + tx * 2.6, p[2] + tz * 2.6];
+          s.seatLook = [p[0], p[1] + 1.7, p[2]];
+          break;
+        case 'stupa': // under the bodhi tree, the stones before you
+          s.seat = [p[0] + 2.2, p[2] + 1.7];
+          s.seatLook = [p[0], p[1] + 1.1, p[2]];
+          break;
+        case 'arch': // inside the chapel ruin, facing altar and window light
+          s.seat = [p[0] + tx * 2.7, p[2] + tz * 2.7];
+          s.seatLook = [p[0] - tx * 1.6, p[1] + 1.8, p[2] - tz * 1.6];
+          break;
+        case 'circle': // at the very center of the spiral
+          s.seat = [p[0], p[2]];
+          s.seatLook = [p[0] + tx * 8, p[1] + 1.2, p[2] + tz * 8];
+          break;
+        case 'pool': // at the rim, looking down into the mirror
+          s.seat = [p[0] + tx * 2.6, p[2] + tz * 2.6];
+          s.seatLook = [p[0], p[1] + 0.3, p[2]];
+          break;
+        case 'flame':
+          s.seat = [p[0] + tx * 2.3, p[2] + tz * 2.3];
+          s.seatLook = [p[0], p[1] + 1.5, p[2]];
+          break;
+        case 'deck':
+          s.seat = [p[0] + tx * 2.5, p[2] + tz * 2.5];
+          s.seatLook = [p[0], p[1] + 1.6, p[2]];
+          break;
+        case 'hollow': // before the cracked basin
+          s.seat = [p[0] + tx * 2.5, p[2] + tz * 2.5];
+          s.seatLook = [p[0], p[1] + 0.7, p[2]];
+          break;
+        case 'jetty':
+          break; // arrival needs no seat
+      }
+      if (s.kind === 'stoa') this.moatC = [p[0], p[2]];
     }
   }
 
@@ -1238,6 +1462,11 @@ export class RetreatEngine {
     if (hollow?.pos) {
       pushTree(hollow.pos[0] + 3.4, hollow.pos[2] + 2.6, 3, 7.5, 5.6);
     }
+    // the bodhi tree shades the stupa — the seat waits under it
+    const stupa = this.spots.find((s) => s.kind === 'stupa');
+    if (stupa?.pos) {
+      pushTree(stupa.pos[0] + 3.1, stupa.pos[2] + 2.4, 2, 9.5, 8.6);
+    }
     this.treeVertCount = treeCount * 6;
     this.buffers.trees = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.trees);
@@ -1268,6 +1497,41 @@ export class RetreatEngine {
         grass.push(x, y, z, cx2, cy2, s * 1.5, s, 0, rng());
       }
       grassCount++;
+    }
+    // wildflowers: drifts in the meadow, and a ring around the spiral
+    const pushFlower = (x: number, z: number) => {
+      const h = this.heightAt(x, z);
+      if (h < 0.6 || this.pathDist(x, z) < 1.8) return;
+      const s = 0.34 + rng() * 0.3;
+      const corners = [
+        [-0.5, 0],
+        [0.5, 0],
+        [0.5, 1],
+        [-0.5, 0],
+        [0.5, 1],
+        [-0.5, 1],
+      ];
+      for (const [cx2, cy2] of corners) {
+        grass.push(x, h - 0.05, z, cx2, cy2, s * 1.5, s, 1, rng());
+      }
+      grassCount++;
+    };
+    for (let patch = 0; patch < 10; patch++) {
+      const a = rng() * Math.PI * 2;
+      const r = 18 + rng() * 90;
+      const px = SPRING_C[0] + Math.cos(a) * r;
+      const pz = SPRING_C[1] + Math.sin(a) * r;
+      for (let i = 0; i < 42; i++) {
+        pushFlower(px + (rng() - 0.5) * 14, pz + (rng() - 0.5) * 14);
+      }
+    }
+    const circleSite = this.spots.find((s) => s.kind === 'circle');
+    if (circleSite?.pos) {
+      for (let i = 0; i < 22; i++) {
+        const a = (i / 22) * Math.PI * 2;
+        const r = 3.4 + rng() * 0.8;
+        pushFlower(circleSite.pos[0] + Math.cos(a) * r, circleSite.pos[2] + Math.sin(a) * r);
+      }
     }
     this.grassVertCount = grassCount * 6;
     this.buffers.grass = gl.createBuffer()!;
@@ -1388,14 +1652,25 @@ export class RetreatEngine {
 
   private waymark(x: number, z: number, y: number): void {
     // a small stone post with a lantern housing — every site's fixed star
-    this.pushBox(x, y + 0.8, z, 0.22, 1.6, 0.22, 0.2, 0.42, 0.41, 0.4);
-    this.pushBox(x, y + 1.78, z, 0.34, 0.34, 0.34, 0.6, 0.28, 0.24, 0.2);
+    this.pushBox(x, y + 0.8, z, 0.22, 1.6, 0.22, 0.2, 0.52, 0.51, 0.49);
+    this.pushBox(x, y + 1.78, z, 0.34, 0.34, 0.34, 0.6, 0.45, 0.37, 0.27);
   }
 
   private buildStructures(): void {
     for (const s of this.spots) {
       if (!s.pos) continue;
       const [x, y, z] = s.pos;
+      // local frame: lf toward the spring (the approach), lr to its right
+      const dxs = SPRING_C[0] - x;
+      const dzs = SPRING_C[1] - z;
+      const ll = Math.hypot(dxs, dzs) || 1;
+      const tx = dxs / ll;
+      const tz = dzs / ll;
+      const ang = Math.atan2(tx, tz);
+      const loc = (lr: number, lf: number): [number, number] => [
+        x + tz * lr + tx * lf,
+        z - tx * lr + tz * lf,
+      ];
       switch (s.kind) {
         case 'trailhead': {
           const wood = [0.34, 0.25, 0.16] as const;
@@ -1415,11 +1690,42 @@ export class RetreatEngine {
           break;
         }
         case 'stoa': {
-          this.pushBox(x, y + 1.55, z, 0.95, 3.1, 0.5, 0.15, 0.5, 0.5, 0.51);
-          this.pushBox(x - 1.9, y + 0.45, z + 1.2, 1.7, 0.16, 0.55, 0.35, 0.52, 0.51, 0.5);
-          this.pushBox(x - 2.4, y + 0.2, z + 1.05, 0.3, 0.4, 0.4, 0.2, 0.45, 0.45, 0.45);
-          this.pushBox(x - 1.35, y + 0.2, z + 1.4, 0.3, 0.4, 0.4, 0.5, 0.45, 0.45, 0.45);
-          this.waymark(x + 1.6, z - 1.1, y);
+          // the inner citadel, ruined: broken walls around the inscribed
+          // stele, a gate gap toward the spring, the dry moat carved outside
+          const stone = [0.55, 0.54, 0.52] as const;
+          const wallRuns: [number, number, number, number, number][] = [
+            // [lr, lf, length, alongF (1) or alongR (0), height]
+            [-4.5, -1.8, 3.0, 1, 1.9],
+            [-4.5, 1.6, 2.4, 1, 1.2],
+            [4.5, -1.4, 3.4, 1, 1.6],
+            [4.5, 2.0, 1.8, 1, 1.0],
+            [-2.9, -3.5, 2.8, 0, 1.8],
+            [0.6, -3.5, 2.6, 0, 1.1],
+            [3.3, -3.5, 1.8, 0, 1.5],
+            [-3.2, 3.5, 2.2, 0, 1.4], // gate side — a gap stays open mid-wall
+            [3.1, 3.5, 2.3, 0, 1.7],
+          ];
+          for (const [lr, lf, len, alongF, hgt] of wallRuns) {
+            const [wx, wz] = loc(lr, lf);
+            this.pushBox(
+              wx,
+              y + hgt / 2,
+              wz,
+              alongF ? 0.55 : len,
+              hgt,
+              alongF ? len : 0.55,
+              ang,
+              ...stone
+            );
+          }
+          // the stele — the passage is carved on this stone
+          this.pushBox(x, y + 1.55, z, 0.95, 3.1, 0.5, ang + 0.04, 0.52, 0.52, 0.53);
+          const [bx, bz] = loc(-1.9, 1.4);
+          this.pushBox(bx, y + 0.45, bz, 1.7, 0.16, 0.55, ang, 0.52, 0.51, 0.5);
+          this.pushBox(bx - 0.6, y + 0.2, bz, 0.3, 0.4, 0.4, ang, 0.45, 0.45, 0.45);
+          this.pushBox(bx + 0.6, y + 0.2, bz, 0.3, 0.4, 0.4, ang, 0.45, 0.45, 0.45);
+          const [wmx, wmz] = loc(1.6, 4.8);
+          this.waymark(wmx, wmz, this.heightAt(wmx, wmz));
           break;
         }
         case 'stupa': {
@@ -1427,7 +1733,36 @@ export class RetreatEngine {
           this.pushDrum(x, y + 0.5, z, 1.12, 0.92, 0.45, 0.62, 0.57, 0.48);
           this.pushDrum(x, y + 0.95, z, 0.72, 0.55, 0.4, 0.58, 0.53, 0.45);
           this.pushDrum(x, y + 1.35, z, 0.34, 0.1, 0.55, 0.62, 0.57, 0.48, 8);
-          this.waymark(x + 1.9, z + 0.6, y);
+          // a prayer-flag line sways between two poles (cloth, not figures)
+          const [p1x, p1z] = loc(-2.7, 1.1);
+          const [p2x, p2z] = loc(2.7, 1.1);
+          this.pushBox(p1x, y + 1.15, p1z, 0.12, 2.3, 0.12, ang, 0.36, 0.28, 0.2);
+          this.pushBox(p2x, y + 1.15, p2z, 0.12, 2.3, 0.12, ang, 0.36, 0.28, 0.2);
+          const cloth: [number, number, number][] = [
+            [0.62, 0.32, 0.28],
+            [0.72, 0.62, 0.34],
+            [0.38, 0.55, 0.5],
+            [0.75, 0.73, 0.68],
+            [0.5, 0.42, 0.56],
+          ];
+          for (let i = 0; i < 7; i++) {
+            const u = (i + 0.5) / 7;
+            const fx = mix(p1x, p2x, u);
+            const fz = mix(p1z, p2z, u);
+            const sag = Math.sin(u * Math.PI) * 0.22;
+            const col = cloth[i % cloth.length];
+            this.pushBox(
+              fx,
+              y + 2.16 - sag,
+              fz,
+              0.3,
+              0.24,
+              0.03,
+              ang + (this.rng() - 0.5) * 0.5,
+              ...col
+            );
+          }
+          this.waymark(x + 1.9, z - 1.4, y);
           break;
         }
         case 'flame': {
@@ -1438,10 +1773,37 @@ export class RetreatEngine {
           break;
         }
         case 'arch': {
-          this.pushBox(x - 1.0, y + 1.8, z, 0.55, 3.6, 0.7, 0.06, 0.62, 0.60, 0.57);
-          this.pushBox(x + 1.0, y + 1.8, z, 0.55, 3.6, 0.7, -0.06, 0.62, 0.60, 0.57);
-          this.pushBox(x, y + 3.75, z, 2.9, 0.5, 0.75, 0, 0.65, 0.63, 0.60);
-          this.waymark(x + 2.1, z + 0.8, y);
+          // a roofless chapel: the arch is its door, light falls through the
+          // window gap in the rear wall onto a low altar
+          const pale = [0.62, 0.6, 0.57] as const;
+          const [j1x, j1z] = loc(-1.0, 2.5);
+          const [j2x, j2z] = loc(1.0, 2.5);
+          const [lnx, lnz] = loc(0, 2.5);
+          this.pushBox(j1x, y + 1.8, j1z, 0.55, 3.6, 0.7, ang, ...pale);
+          this.pushBox(j2x, y + 1.8, j2z, 0.55, 3.6, 0.7, ang, ...pale);
+          this.pushBox(lnx, y + 3.75, lnz, 2.9, 0.5, 0.75, ang, 0.65, 0.63, 0.6);
+          // side walls, broken to different heights
+          for (const [lr, lf, len, hgt] of [
+            [-2.2, 0.9, 2.6, 2.3],
+            [-2.2, -1.6, 1.7, 1.5],
+            [2.2, 0.6, 2.0, 1.8],
+            [2.2, -1.7, 1.6, 2.4],
+          ] as const) {
+            const [wx, wz] = loc(lr, lf);
+            this.pushBox(wx, y + hgt / 2, wz, 0.45, hgt, len, ang, ...pale);
+          }
+          // rear wall with the window gap, lintel above it
+          for (const lr of [-1.5, 1.5] as const) {
+            const [wx, wz] = loc(lr, -2.5);
+            this.pushBox(wx, y + 1.3, wz, 1.5, 2.6, 0.45, ang, ...pale);
+          }
+          const [wlx, wlz] = loc(0, -2.5);
+          this.pushBox(wlx, y + 2.7, wlz, 4.4, 0.4, 0.45, ang, 0.65, 0.63, 0.6);
+          // the altar the light lands on
+          const [alx, alz] = loc(0, -1.5);
+          this.pushBox(alx, y + 0.35, alz, 1.25, 0.7, 0.6, ang, 0.58, 0.56, 0.53);
+          const [wmx, wmz] = loc(3.0, 3.0);
+          this.waymark(wmx, wmz, this.heightAt(wmx, wmz));
           break;
         }
         case 'circle': {
@@ -1534,6 +1896,41 @@ export class RetreatEngine {
         }
       }
     }
+    // benches along the way — places to simply sit, asked for and earned
+    const bench = (bx: number, bz: number, face: number) => {
+      const by = this.heightAt(bx, bz);
+      this.pushBox(bx, by + 0.46, bz, 1.6, 0.09, 0.45, face, 0.44, 0.35, 0.24);
+      const c = Math.cos(face);
+      const sn = Math.sin(face);
+      for (const o of [-0.6, 0.6]) {
+        this.pushBox(bx + c * o, by + 0.2, bz - sn * o, 0.12, 0.42, 0.4, face, 0.38, 0.3, 0.2);
+      }
+    };
+    const thTrail = this.spotPaths.get('trailhead');
+    if (thTrail && thTrail.length > 3) {
+      const m = thTrail[3];
+      const n = thTrail[4] ?? m;
+      const ddx = n.x - m.x;
+      const ddz = n.z - m.z;
+      const dl = Math.hypot(ddx, ddz) || 1;
+      bench(m.x + (-ddz / dl) * 3.2, m.z + (ddx / dl) * 3.2, Math.atan2(ddx, ddz));
+    }
+    bench(3.4, 99, Math.PI); // by the shore, facing the water
+
+    // the waterfall's rocky crown
+    for (const [ox, oz, s] of [
+      [-1.5, 1.5, 2.6],
+      [2.5, 0.5, 1.9],
+      [0.5, -2.5, 2.2],
+      [5.0, -1.5, 1.4],
+    ] as const) {
+      const rx = FALL_MOUND[0] + ox;
+      const rz = FALL_MOUND[1] + oz;
+      const rh = this.heightAt(rx, rz);
+      const g = 0.42 + this.rng() * 0.1;
+      this.pushBox(rx, rh + s * 0.2, rz, s, s * 0.6, s * 0.85, this.rng() * Math.PI, g, g, g);
+    }
+
     // boulders in the middle distance — the valley is a real place
     const rng = mulberry32(4451);
     for (let i = 0; i < 26; i++) {
@@ -1579,8 +1976,8 @@ export class RetreatEngine {
       mesh: program(gl, MESH_VS, MESH_FS, ['aPos', 'aNormal', 'aColor'], [
         'uVP', 'uCamPos', 'uSunDir', 'uSunCol', 'uAmb', 'uFogCol', 'uFogDens', 'uLights[0]', 'uLightCol[0]',
       ]),
-      sprite: program(gl, SPRITE_VS, SPRITE_FS, ['aCenter', 'aCorner', 'aSize', 'aColor'], [
-        'uVP', 'uCamRight', 'uCamUp',
+      sprite: program(gl, SPRITE_VS, SPRITE_FS, ['aCenter', 'aCorner', 'aSize', 'aColor', 'aTex'], [
+        'uVP', 'uCamRight', 'uCamUp', 'uGlyphs',
       ]),
       line: program(gl, LINE_VS, LINE_FS, ['aPos'], ['uVP', 'uColor']),
     };
@@ -1589,7 +1986,12 @@ export class RetreatEngine {
     this.textures.noise = this.uploadTexture(noiseTexture());
     const rngTex = mulberry32(88123);
     this.textures.trees = this.uploadTexture(treeAtlas(rngTex), { premultiply: true });
-    this.textures.grass = this.uploadTexture(grassTexture(rngTex), { premultiply: true });
+    this.textures.grass = this.uploadTexture(floraTexture(rngTex), { premultiply: true });
+    const colorByKind = new Map<string, string>();
+    for (const s of spots) colorByKind.set(s.kind, s.color);
+    const ga = glyphAtlas(colorByKind);
+    this.glyphCell = ga.cells;
+    this.textures.glyphs = this.uploadTexture(ga.canvas, { premultiply: true, clamp: true });
 
     // geometry
     this.buildTerrain();
@@ -1604,6 +2006,11 @@ export class RetreatEngine {
       edgeIn: 88,
       edgeOut: 104,
     });
+    // where the fall pours off the headland's lakeward lip into the water
+    const lipX = FALL_MOUND[0] + 6.5;
+    const lipZ = FALL_MOUND[1] - 1;
+    this.fallTop = [lipX, this.heightAt(lipX, lipZ) + 0.4, lipZ];
+    this.fallBase = [lipX + 4.5, 0.25, lipZ - 0.5];
     this.buildStructures();
 
     // shared unit quad for water bodies (scaled per body via uniforms? — the
@@ -1627,6 +2034,7 @@ export class RetreatEngine {
       gl.bufferData(gl.ARRAY_BUFFER, q, gl.STATIC_DRAW);
     }
     this.buffers.sprites = gl.createBuffer()!;
+    this.buffers.sprites2 = gl.createBuffer()!; // textured medallions, alpha pass
     this.buffers.lines = gl.createBuffer()!;
 
     // camera: standing on the trail south of the arch, facing the valley
@@ -1794,6 +2202,7 @@ export class RetreatEngine {
   release(): void {
     if (this.mode === 'reveal' || this.mode === 'revealed') return;
     this.lastInput = performance.now(); // standing up is presence, not idleness
+    this.seatGlide = null;
     const from = this.seatedAt;
     this.seatedAt = null;
     this.mode = 'free';
@@ -1988,9 +2397,9 @@ export class RetreatEngine {
       if (!s.pos) continue;
       if (!s.active && !s.locked) continue;
       const anchor = s.lantern ?? s.pos;
-      const p = this.project(anchor[0], anchor[1], anchor[2]);
+      const p = this.project(anchor[0], anchor[1] + 1.0, anchor[2]);
       if (!p) continue;
-      const rad = Math.max(30, p.scale * 2.2);
+      const rad = Math.max(38, p.scale * 2.8); // the medallion is the target
       const d = Math.hypot(p.x - sx, p.y - sy);
       if (d > rad) continue;
       const score = d / rad;
@@ -2178,9 +2587,24 @@ export class RetreatEngine {
     this.seatedAt = s;
     this.wp = [];
     this.apSpot = null;
-    if (s.pos) {
-      // settle the gaze onto the structure
-      this.orientToward([s.pos[0], s.pos[1] + 1.35, s.pos[2]], 900);
+    // settle into this place's own seat, gaze finding what it faces
+    const look: [number, number, number] = s.seatLook ?? [
+      s.pos![0],
+      s.pos![1] + 1.35,
+      s.pos![2],
+    ];
+    if (s.seat) {
+      if (this.reducedMotion) {
+        this.pos.x = s.seat[0];
+        this.pos.z = s.seat[1];
+        this.pos.y = this.groundY(s.seat[0], s.seat[1]) + EYE;
+        this.lookAt(look[0], look[1], look[2]);
+      } else {
+        this.seatGlide = { x: s.seat[0], z: s.seat[1] };
+        this.orientToward(look, 1300);
+      }
+    } else if (s.pos) {
+      this.orientToward(look, 900);
     }
     this.cb.onCapture(s.id);
   }
@@ -2190,7 +2614,10 @@ export class RetreatEngine {
     // clamping at one frame's length makes slow devices walk in slow motion
     const dt = clamp(now - this.last, 0, 100) / 1000;
     this.last = now;
-    const t = (now - this.t0) / 1000;
+    // rAF's first timestamp can predate the performance.now() taken in
+    // start() — a negative t once turned a modulo negative and indexed a
+    // trail at [-1]. Time never runs backwards here.
+    const t = Math.max(0, (now - this.t0) / 1000);
     const wt = this.reducedMotion ? 0 : t;
 
     // adaptive quality — resolution is the real lever (same recipe as the
@@ -2218,6 +2645,16 @@ export class RetreatEngine {
     if (this.mode === 'free') this.freeWalk(dt, now);
     else if (this.mode === 'autopilot') this.autoWalk(dt, now);
     else if (this.mode === 'reveal') this.riseReveal(now);
+    else if (this.mode === 'seated' && this.seatGlide) {
+      // drifting the last arm's length into the seat while the chamber opens
+      const k = Math.min(1, dt * 2.0);
+      this.pos.x += (this.seatGlide.x - this.pos.x) * k;
+      this.pos.z += (this.seatGlide.z - this.pos.z) * k;
+      this.pos.y += (this.groundY(this.pos.x, this.pos.z) + EYE - this.pos.y) * k;
+      if (Math.hypot(this.seatGlide.x - this.pos.x, this.seatGlide.z - this.pos.z) < 0.06) {
+        this.seatGlide = null;
+      }
+    }
 
     // gaze guidance
     if (this.gaze && this.mode !== 'autopilot') {
@@ -2236,11 +2673,30 @@ export class RetreatEngine {
       if (u >= 1) this.gaze = null;
     }
 
-    // shore proximity → the water's voice (throttled)
+    // proximity → the world's voices (throttled): shore, waterfall, and the
+    // nearest lit site's own sound
     if (now - this.lakeCbAt > 400) {
       this.lakeCbAt = now;
       const dl = Math.hypot(this.pos.x - LAKE_C[0], this.pos.z - LAKE_C[1]);
       this.cb.onLakeCloseness(clamp(1 - (dl - 60) / 80, 0, 1));
+      const df = Math.hypot(this.pos.x - this.fallBase[0], this.pos.z - this.fallBase[2]);
+      this.cb.onFallCloseness(clamp(1 - df / 75, 0, 1));
+      let bestKind: string | null = null;
+      let bestK = 0;
+      if (this.seatedAt?.lit) {
+        bestKind = this.seatedAt.kind;
+        bestK = 1;
+      } else {
+        for (const s of this.spots) {
+          if (!s.lit || !s.pos) continue;
+          const k = clamp(1 - Math.hypot(this.pos.x - s.pos[0], this.pos.z - s.pos[2]) / 26, 0, 1);
+          if (k > bestK) {
+            bestK = k;
+            bestKind = s.kind;
+          }
+        }
+      }
+      this.cb.onNearSite(bestK > 0.02 ? bestKind : null, bestK);
     }
 
     this.render(wt);
@@ -2581,7 +3037,7 @@ export class RetreatEngine {
     gl.drawArrays(gl.TRIANGLES, 0, this.treeVertCount);
     if (this.quality > 0.25) {
       gl.bindTexture(gl.TEXTURE_2D, this.textures.grass);
-      gl.uniform1f(bill.u.uCols, 1);
+      gl.uniform1f(bill.u.uCols, 2);
       gl.uniform1f(bill.u.uNearShrink, 1);
       bindBillBuffer(this.buffers.grass);
       gl.drawArrays(
@@ -2650,7 +3106,8 @@ export class RetreatEngine {
     cb: { Sx: number; Sy: number; Sz: number; Ux: number; Uy: number; Uz: number }
   ): void {
     const gl = this.gl;
-    const sprites: GlowSprite[] = [];
+    const sprites: GlowSprite[] = []; // additive glows
+    const marks: GlowSprite[] = []; // textured medallions, alpha-blended
     const push = (sp: GlowSprite) => sprites.push(sp);
 
     for (const s of this.spots) {
@@ -2658,8 +3115,8 @@ export class RetreatEngine {
       const [lx, ly, lz] = s.lantern;
       const [r, g, b] = hexRgb(s.color);
       if (s.lit) {
-        let a = 0.55 + duskK * 0.45;
-        let size = 1.5;
+        let a = 0.5 + duskK * 0.5;
+        let size = 1.2;
         if (s.cue && !this.reducedMotion) {
           const ph = 0.5 + 0.5 * Math.sin(t * 1.7);
           a *= 0.7 + 0.5 * ph;
@@ -2671,10 +3128,38 @@ export class RetreatEngine {
           size *= 0.85;
         }
         push({ x: lx, y: ly, z: lz, w: size, h: size, r, g, b, a });
-        push({ x: lx, y: ly, z: lz, w: size * 4.5, h: size * 4.5, r, g, b, a: a * 0.16 });
+        push({ x: lx, y: ly, z: lz, w: size * 3.6, h: size * 3.6, r, g, b, a: a * 0.13 });
         // a soft column above the cue — findable across the meadow
         if (s.cue) {
           push({ x: lx, y: ly + 4.5, z: lz, w: 1.6, h: 9, r, g, b, a: 0.10 + duskK * 0.05 });
+        }
+        // the medallion: this place's seal, hanging in the air above it —
+        // the Atlas's pulling-light language, planted in the world
+        const cell = this.glyphCell.get(s.kind);
+        if (cell !== undefined) {
+          let mSize = 1.35;
+          let mA = 0.92;
+          if (s.visited) {
+            mSize = 0.95;
+            mA = 0.42;
+          } else if (!this.reducedMotion) {
+            const breathe = 0.5 + 0.5 * Math.sin(t * 1.1 + lx * 0.3);
+            mSize *= 1 + breathe * 0.1;
+            mA *= 0.8 + breathe * 0.2;
+          }
+          if (s.cue) mSize *= 1.25;
+          marks.push({
+            x: lx,
+            y: ly + 1.0 + (this.reducedMotion ? 0 : Math.sin(t * 0.7 + lz) * 0.12),
+            z: lz,
+            w: mSize,
+            h: mSize,
+            r: 1,
+            g: 1,
+            b: 1,
+            a: mA,
+            tex: cell,
+          });
         }
       }
       // spot-specific breath
@@ -2688,6 +3173,45 @@ export class RetreatEngine {
       }
       if (s.kind === 'arch' && s.lit) {
         push({ x: lx, y: ly + 1.2, z: lz, w: 2.2, h: 7.5, r: 1, g: 0.9, b: 0.7, a: 0.07 + duskK * 0.05 });
+      }
+    }
+
+    // the waterfall — white water off the headland into the lake, mist and
+    // foam where it lands
+    {
+      const [tx2, ty2, tz2] = this.fallTop;
+      const [bx2, by2, bz2] = this.fallBase;
+      const n = this.quality > 0.25 ? 14 : 7;
+      for (let i = 0; i < n; i++) {
+        const u = this.reducedMotion ? i / n : (((t * 0.5 + i / n) % 1) + 1) % 1;
+        const lane = ((i % 3) - 1) * 0.55; // three braided strands
+        const x = mix(tx2, bx2, u) + Math.sin(i * 2.4) * 0.25;
+        const y = mix(ty2, by2, u * u); // falls faster as it drops
+        const z = mix(tz2, bz2, u) + lane + Math.cos(i * 1.9) * 0.2;
+        const fade = Math.sin(u * Math.PI);
+        push({ x, y, z, w: 0.65, h: 1.9, r: 0.85, g: 0.92, b: 0.98, a: 0.3 * fade + 0.1 });
+      }
+      const mistPh = this.reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 0.6);
+      push({ x: bx2, y: by2 + 0.8, z: bz2, w: 4.2 + mistPh, h: 2.6, r: 0.85, g: 0.9, b: 0.95, a: 0.13 });
+      push({ x: bx2 + 0.8, y: by2 + 0.15, z: bz2, w: 5.2, h: 1.1, r: 0.95, g: 0.97, b: 1, a: 0.16 });
+    }
+
+    // light drifts along the trail to the cue — the way itself beckons
+    if (!this.reducedMotion) {
+      const cueSpot = this.spots.find((s) => s.cue && s.lit && !s.locked);
+      const trail = cueSpot ? this.spotPaths.get(cueSpot.id) : null;
+      if (cueSpot && trail && trail.length > 1) {
+        const [cr, cg2, cb2] = hexRgb(cueSpot.color);
+        for (let i = 0; i < 7; i++) {
+          const u = (((t * 0.045 + i / 7) % 1) + 1) % 1; // stays positive
+          const fi = u * (trail.length - 1);
+          const seg = clamp(Math.floor(fi), 0, trail.length - 2);
+          const su = fi - seg;
+          const x = mix(trail[seg].x, trail[seg + 1].x, su);
+          const z = mix(trail[seg].z, trail[seg + 1].z, su);
+          const y = this.heightAt(x, z) + 0.5 + Math.sin(t * 1.3 + i * 2) * 0.15;
+          push({ x, y, z, w: 0.16, h: 0.16, r: cr, g: cg2, b: cb2, a: 0.55 * Math.sin(u * Math.PI) });
+        }
       }
     }
 
@@ -2736,15 +3260,8 @@ export class RetreatEngine {
       }
     }
 
-    if (sprites.length === 0) return;
-    const FLOATS = 11;
-    const need = sprites.length * 6 * FLOATS;
-    if (this.spriteCapacity < need) {
-      this.spriteData = new Float32Array(need);
-      this.spriteCapacity = need;
-    }
-    const D = this.spriteData;
-    let o = 0;
+    if (sprites.length === 0 && marks.length === 0) return;
+    const FLOATS = 12;
     const corners = [
       [-0.5, -0.5],
       [0.5, -0.5],
@@ -2753,39 +3270,57 @@ export class RetreatEngine {
       [0.5, 0.5],
       [-0.5, 0.5],
     ];
-    for (const sp of sprites) {
-      for (const [cx2, cy2] of corners) {
-        D[o++] = sp.x;
-        D[o++] = sp.y;
-        D[o++] = sp.z;
-        D[o++] = cx2;
-        D[o++] = cy2;
-        D[o++] = sp.w;
-        D[o++] = sp.h;
-        D[o++] = sp.r;
-        D[o++] = sp.g;
-        D[o++] = sp.b;
-        D[o++] = sp.a;
+    const pack = (list: GlowSprite[]): Float32Array => {
+      const D = new Float32Array(list.length * 6 * FLOATS);
+      let o = 0;
+      for (const sp of list) {
+        for (const [cx2, cy2] of corners) {
+          D[o++] = sp.x;
+          D[o++] = sp.y;
+          D[o++] = sp.z;
+          D[o++] = cx2;
+          D[o++] = cy2;
+          D[o++] = sp.w;
+          D[o++] = sp.h;
+          D[o++] = sp.r;
+          D[o++] = sp.g;
+          D[o++] = sp.b;
+          D[o++] = sp.a;
+          D[o++] = sp.tex ?? -1;
+        }
       }
-    }
+      return D;
+    };
     const prog = this.progs.sprite;
     gl.useProgram(prog.p);
-    gl.blendFunc(gl.ONE, gl.ONE);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sprites);
-    gl.bufferData(gl.ARRAY_BUFFER, D.subarray(0, o), gl.DYNAMIC_DRAW);
-    const stride = FLOATS * 4;
-    gl.enableVertexAttribArray(prog.a.aCenter);
-    gl.vertexAttribPointer(prog.a.aCenter, 3, gl.FLOAT, false, stride, 0);
-    gl.enableVertexAttribArray(prog.a.aCorner);
-    gl.vertexAttribPointer(prog.a.aCorner, 2, gl.FLOAT, false, stride, 12);
-    gl.enableVertexAttribArray(prog.a.aSize);
-    gl.vertexAttribPointer(prog.a.aSize, 2, gl.FLOAT, false, stride, 20);
-    gl.enableVertexAttribArray(prog.a.aColor);
-    gl.vertexAttribPointer(prog.a.aColor, 4, gl.FLOAT, false, stride, 28);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.textures.glyphs);
+    gl.uniform1i(prog.u.uGlyphs, 0);
     gl.uniformMatrix4fv(prog.u.uVP, false, M);
     gl.uniform3f(prog.u.uCamRight, cb.Sx, cb.Sy, cb.Sz);
     gl.uniform3f(prog.u.uCamUp, cb.Ux, cb.Uy, cb.Uz);
-    gl.drawArrays(gl.TRIANGLES, 0, sprites.length * 6);
+    const stride = FLOATS * 4;
+    const bindAndDraw = (buf: WebGLBuffer, list: GlowSprite[]) => {
+      if (!list.length) return;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, pack(list), gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(prog.a.aCenter);
+      gl.vertexAttribPointer(prog.a.aCenter, 3, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(prog.a.aCorner);
+      gl.vertexAttribPointer(prog.a.aCorner, 2, gl.FLOAT, false, stride, 12);
+      gl.enableVertexAttribArray(prog.a.aSize);
+      gl.vertexAttribPointer(prog.a.aSize, 2, gl.FLOAT, false, stride, 20);
+      gl.enableVertexAttribArray(prog.a.aColor);
+      gl.vertexAttribPointer(prog.a.aColor, 4, gl.FLOAT, false, stride, 28);
+      gl.enableVertexAttribArray(prog.a.aTex);
+      gl.vertexAttribPointer(prog.a.aTex, 1, gl.FLOAT, false, stride, 44);
+      gl.drawArrays(gl.TRIANGLES, 0, list.length * 6);
+    };
+    // glows add light; medallions sit over the sky like set seals
+    gl.blendFunc(gl.ONE, gl.ONE);
+    bindAndDraw(this.buffers.sprites, sprites);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    bindAndDraw(this.buffers.sprites2, marks);
   }
 
   /** Etched labels on the 2D overlay — the Voyage's label language, walked. */
@@ -2798,10 +3333,13 @@ export class RetreatEngine {
       const showable = s.active || s.visited || s.locked;
       if (!showable) continue;
       const d = Math.hypot(s.pos[0] - this.pos.x, s.pos[2] - this.pos.z);
-      if (d > 150) continue;
-      const p = this.project(s.lantern[0], s.lantern[1] + 1.0, s.lantern[2]);
+      // unvisited places call from further away — discovery over tidiness
+      const range = s.lit && !s.visited ? 250 : 130;
+      if (d > range) continue;
+      const p = this.project(s.lantern[0], s.lantern[1] + 1.9, s.lantern[2]);
       if (!p) continue;
-      const alpha = clamp(1.6 - d / 90, 0, 0.95) * (s.active || s.locked ? 1 : 0.55);
+      const alpha =
+        clamp(1.6 - d / (range * 0.62), 0, 0.95) * (s.active || s.locked ? 1 : 0.55);
       if (alpha <= 0.03) continue;
       ctx.save();
       ctx.globalAlpha = alpha;

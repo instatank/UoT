@@ -24,7 +24,7 @@ import {
   rejectedAtmosphere,
   rejectedColor,
 } from '@/lib/lineage';
-import { nodeSpeech, useVoice, voiceSupported } from '@/lib/voice';
+import { nodeSpeakStyle, nodeSpeech, useVoice, voiceSupported } from '@/lib/voice';
 import { seedFrom } from '@/lib/rand';
 import {
   RetreatEngine,
@@ -34,7 +34,9 @@ import {
 import {
   disposeNature,
   duskNature,
+  setFallCloseness,
   setLakeCloseness,
+  setSiteAtmos,
   step as natureStep,
   tintNature,
   toggleNature,
@@ -119,11 +121,101 @@ function ListenPill({ session, refNode }: { session: SessionData; refNode: NodeR
   return (
     <button
       className={`pill listen${speaking ? ' on' : ''}`}
-      onClick={() => toggle(nodeSpeech(session, refNode))}
+      onClick={() => toggle(nodeSpeech(session, refNode), nodeSpeakStyle(session, refNode))}
       aria-pressed={speaking}
     >
       {speaking ? '◼ stop' : '▷ listen'}
     </button>
+  );
+}
+
+// ---------- the teaching arrives in its place's own way ----------
+
+type PassageMode =
+  | 'typed' // character by character, a thin caret — the empirical frame
+  | 'carved' // steady chisel reveal — read off the stone
+  | 'breath' // phrase by phrase, meditation-paced
+  | 'ember' // words rise warm from below, as off the fire
+  | 'illuminated' // a drop cap, lines lit in sweeps
+  | 'turning' // lines arrive with a slow turn
+  | 'welling' // words surface like water
+  | 'guttering'; // it appears — then parts of it thin, mirage-wise
+
+const lineagePassageMode: Record<Lineage, PassageMode> = {
+  Stoicism: 'carved',
+  Buddhism: 'breath',
+  'Hindu/Gītā': 'ember',
+  Christianity: 'illuminated',
+  Sufism: 'turning',
+  Taoism: 'welling',
+  'Neuroscience/Psychology': 'typed',
+};
+
+/** Splits text into units per mode and staggers their arrival. Tap to let it
+ * all land at once; reduced motion gets the plain paragraph. */
+function StagedText({
+  text,
+  mode,
+  className,
+  reduced,
+}: {
+  text: string;
+  mode: PassageMode;
+  className?: string;
+  reduced: boolean;
+}) {
+  const [done, setDone] = useState(false);
+  useEffect(() => setDone(false), [text]);
+  if (reduced || done) {
+    return (
+      <span className={className} onClick={() => setDone(true)}>
+        {text}
+      </span>
+    );
+  }
+  const byChar = mode === 'typed' || mode === 'carved';
+  const byPhrase = mode === 'breath' || mode === 'illuminated';
+  const units = byChar
+    ? text.split('')
+    : byPhrase
+      ? text.split(/(?<=[,;.?!…—])\s+/)
+      : text.split(/(\s+)/).filter((u) => u.length);
+  // the whole passage lands within a fixed window, whatever its length
+  const total = byChar ? 3.6 : byPhrase ? 4.6 : 4.2;
+  const step = total / Math.max(units.length, 1);
+  let acc = 0.15;
+  const spans = units.map((u, i) => {
+    const delay = acc;
+    acc += step * (byPhrase ? 0.6 + Math.min(u.length / 40, 1.4) : 1);
+    // whitespace stays plain inline — inline-block collapses a lone space
+    if (!u.trim()) return <span key={i}>{u}</span>;
+    const flicker = mode === 'guttering' && (i * 2654435761) % 7 === 0;
+    return (
+      <span
+        key={i}
+        className={`st-u st-${mode}${flicker ? ' st-flicker' : ''}`}
+        style={{ animationDelay: `${delay.toFixed(2)}s` }}
+      >
+        {mode === 'illuminated' && i === 0 && u.length > 1 ? (
+          <>
+            <span className="st-dropcap">{u.charAt(0)}</span>
+            {u.slice(1)}
+          </>
+        ) : (
+          u
+        )}
+      </span>
+    );
+  });
+  return (
+    <span
+      className={`${className ?? ''} st-host`}
+      onClick={() => setDone(true)}
+      title="tap to let it all land"
+    >
+      {spans}
+      {mode === 'typed' && <span className="st-caret" style={{ animationDelay: `${acc.toFixed(2)}s` }} />}
+    </span>
   );
 }
 
@@ -133,6 +225,7 @@ function Chamber({
   session,
   refNode,
   practiceUnlocked,
+  reduced,
   onDeepen,
   onSurface,
   onRelease,
@@ -140,6 +233,7 @@ function Chamber({
   session: SessionData;
   refNode: NodeRef;
   practiceUnlocked: boolean;
+  reduced: boolean;
   onDeepen: (parallelId: string) => void;
   onSurface: (parallelId: string) => void;
   onRelease: () => void;
@@ -153,8 +247,10 @@ function Chamber({
   let title = '';
   let head: React.ReactNode = null;
   let mark: React.ReactNode = null;
+  let surface: PassageMode = 'welling';
 
   if (refNode.kind === 'complaint') {
+    surface = 'typed'; // your own words, arriving as you first said them
     title = `“${session.surfaceComplaint}”`;
     head = (
       <>
@@ -164,7 +260,9 @@ function Chamber({
     );
     body = (
       <>
-        <p className="body-text">{session.complaintBody}</p>
+        <p className="body-text">
+          <StagedText text={session.complaintBody} mode="typed" reduced={reduced} />
+        </p>
         <p className="hint">
           You carried this through the arch with you. Something runs beneath it — the path leads
           down to a spring.
@@ -172,6 +270,7 @@ function Chamber({
       </>
     );
   } else if (refNode.kind === 'mechanism') {
+    surface = 'welling'; // the water under everything, surfacing
     const m = session.mechanism;
     title = m.name;
     head = (
@@ -182,7 +281,9 @@ function Chamber({
     );
     body = (
       <>
-        <p className="body-text">{m.description}</p>
+        <p className="body-text">
+          <StagedText text={m.description} mode="welling" reduced={reduced} />
+        </p>
         <p className="hint">
           This is the water under the complaint. Places have woken around the meadow — each
           tradition built beside the same spring. One of them only looks like it did.
@@ -193,6 +294,7 @@ function Chamber({
     const pid = refNode.kind === 'parallel' ? refNode.id : refNode.parallelId;
     const p = session.parallels.find((x) => x.id === pid) as Parallel;
     const rejected = p.status === 'rejected';
+    surface = rejected ? 'guttering' : lineagePassageMode[p.lineage];
     const color = rejected ? rejectedColor : lineageColor[p.lineage];
     mark = (
       <div className="chamber-mark" aria-hidden>
@@ -218,7 +320,7 @@ function Chamber({
             {p.source.translationNote ? ` — ${p.source.translationNote}` : ''}
           </p>
           <blockquote className="passage" style={{ borderLeftColor: `${color}66` }}>
-            {p.passage}
+            <StagedText text={p.passage} mode={surface} reduced={reduced} />
           </blockquote>
           <Fold label="the reading">
             <p className="reading">{p.reading}</p>
@@ -250,7 +352,9 @@ function Chamber({
       );
       body = (
         <>
-          <p className="body-text">{d.body}</p>
+          <p className="body-text">
+            <StagedText text={d.body} mode={surface} reduced={reduced} />
+          </p>
           <p className="hint">
             {practiceUnlocked
               ? 'Depth resolves. Down at the shore, the jetty lanterns are burning.'
@@ -266,7 +370,7 @@ function Chamber({
 
   return (
     <div
-      className="vchamber retreat-chamber"
+      className={`vchamber retreat-chamber surface-${surface}`}
       key={JSON.stringify(refNode)}
       role="dialog"
       aria-modal="true"
@@ -377,6 +481,8 @@ export default function RetreatView({ session }: { session: SessionData }) {
         onRevealDone: () => setArrivalOpen(true),
         onStep: () => natureStep(),
         onLakeCloseness: (k) => setLakeCloseness(k),
+        onNearSite: (kind, k) => setSiteAtmos(kind, k),
+        onFallCloseness: (k) => setFallCloseness(k),
       });
     } catch {
       // WebGL unavailable (old device, disabled) — offer the other doors in
@@ -642,6 +748,7 @@ export default function RetreatView({ session }: { session: SessionData }) {
           session={session}
           refNode={chamber}
           practiceUnlocked={practiceUnlocked}
+          reduced={reduced}
           onDeepen={(pid) => {
             const ref: NodeRef = { kind: 'deepening', parallelId: pid };
             select(ref);
