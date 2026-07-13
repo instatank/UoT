@@ -481,15 +481,20 @@ export default function VoyageView({ session }: { session: SessionData }) {
     }
   }, [chamber, practiceUnlocked, reduced, say]);
 
-  // first hint once the intro lifts — stays until the beacon is reached
+  // first hint once the intro lifts — stays until the beacon is reached.
+  // Phones get thumb words; "arrow-keys" belongs to fine pointers only.
   useEffect(() => {
-    if (!intro)
+    if (!intro) {
+      const touch = window.matchMedia('(pointer: coarse)').matches;
       say(
         reduced
           ? 'tap the pale light to approach it — or use the compass ◉'
-          : 'drag or arrow-keys to look · tap the pale light — or let ◉ carry you',
+          : touch
+            ? 'drag to look · tap the pale light — or let ◉ carry you'
+            : 'drag or arrow-keys to look · tap the pale light — or let ◉ carry you',
         0
       );
+    }
   }, [intro, reduced, say]);
 
   // the atmosphere of the chamber currently open (null outside lineage rooms)

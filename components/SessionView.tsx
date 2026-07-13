@@ -51,6 +51,13 @@ export default function SessionView({ session }: { session: SessionData }) {
   const compact = useCompact();
   const { state, practiceUnlocked, select, arrive } = useSessionState(session);
 
+  // the coach mark leaves on first touch of the map, or quietly on its own —
+  // parked over the map it was overlapping node labels indefinitely
+  useEffect(() => {
+    const t = window.setTimeout(() => setHintGone(true), 9000);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // the threshold lifts on its own, or on a tap; reduced motion skips it
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -304,11 +311,9 @@ export default function SessionView({ session }: { session: SessionData }) {
               onArrive={handleArrive}
             />
           </MapViewport>
-          {!hintGone && (
-            <div className="map-hint" aria-hidden>
-              drag to move · pinch or scroll to zoom
-            </div>
-          )}
+          <div className={`map-hint${hintGone ? ' gone' : ''}`} aria-hidden>
+            drag to move · pinch or scroll to zoom
+          </div>
         </div>
 
         <aside
