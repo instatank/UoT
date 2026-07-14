@@ -140,6 +140,13 @@ function buildMotifs(): void {
 
   // arch — organ swells through a ruined chapel, far away
   motif('arch', 0.16, (out) => {
+    // The swell rides an inner gain, never the motif's own (outer) gain: the
+    // outer gain is reserved for proximity (setSiteAtmos holds it at 0 when
+    // far). A bipolar LFO on that silent gain swings positive and bleeds the
+    // organ across the whole valley — so the swell lives one node in.
+    const inner = ac.createGain();
+    inner.gain.value = 0.6;
+    inner.connect(out);
     for (const [f, a] of [
       [130.81, 1],
       [196.0, 0.55],
@@ -150,20 +157,25 @@ function buildMotifs(): void {
       const g = ac.createGain();
       g.gain.value = a;
       o.connect(g);
-      g.connect(out);
+      g.connect(inner);
       o.start();
     }
     const swell = ac.createOscillator();
     swell.frequency.value = 0.031;
     const sg = ac.createGain();
-    sg.gain.value = 0.45;
+    sg.gain.value = 0.4;
     swell.connect(sg);
-    sg.connect(out.gain);
+    sg.connect(inner.gain);
     swell.start();
   });
 
   // circle — a breath-flute with slow vibrato, phrased by an LFO
   motif('circle', 0.14, (out) => {
+    // Phrasing LFO rides an inner gain; the outer gain stays proximity-only so
+    // the flute holds silent until the walker reaches the spiral (see arch).
+    const inner = ac.createGain();
+    inner.gain.value = 0.6;
+    inner.connect(out);
     const o = ac.createOscillator();
     o.frequency.value = 523.25;
     const vib = ac.createOscillator();
@@ -176,7 +188,7 @@ function buildMotifs(): void {
     const g = ac.createGain();
     g.gain.value = 0.5;
     o.connect(g);
-    g.connect(out);
+    g.connect(inner);
     o.start();
     const breath = ac.createBufferSource();
     breath.buffer = noiseBuffer(ac, 4);
@@ -189,14 +201,14 @@ function buildMotifs(): void {
     bg.gain.value = 0.1;
     breath.connect(bp);
     bp.connect(bg);
-    bg.connect(out);
+    bg.connect(inner);
     breath.start();
     const phrase = ac.createOscillator();
     phrase.frequency.value = 0.06;
     const pg = ac.createGain();
-    pg.gain.value = 0.5;
+    pg.gain.value = 0.4;
     phrase.connect(pg);
-    pg.connect(out.gain);
+    pg.connect(inner.gain);
     phrase.start();
   });
 
@@ -231,6 +243,15 @@ function buildMotifs(): void {
 
   // deck — a clear high shimmer, barely there; birds sing more nearby
   motif('deck', 0.05, (out) => {
+    // These are two pure high sines (≈1568/2093 Hz). Their shimmer LFO rode the
+    // outer (proximity) gain, which sits at 0 when far — but a bipolar LFO
+    // swings it positive, so the sines bled through the entire valley as a
+    // persistent high-pitched tone. Route the shimmer through an inner gain and
+    // leave the outer gain proximity-only, so the shimmer only sounds at the
+    // jetty.
+    const inner = ac.createGain();
+    inner.gain.value = 0.6;
+    inner.connect(out);
     for (const [f, a] of [
       [1567.98, 1],
       [2093.0, 0.5],
@@ -240,15 +261,15 @@ function buildMotifs(): void {
       const g = ac.createGain();
       g.gain.value = a * 0.4;
       o.connect(g);
-      g.connect(out);
+      g.connect(inner);
       o.start();
     }
     const lfo = ac.createOscillator();
     lfo.frequency.value = 0.07;
     const lg = ac.createGain();
-    lg.gain.value = 0.5;
+    lg.gain.value = 0.4;
     lfo.connect(lg);
-    lg.connect(out.gain);
+    lg.connect(inner.gain);
     lfo.start();
   });
 

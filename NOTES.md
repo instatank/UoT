@@ -176,6 +176,14 @@ The Retreat was built and verified on desktop viewports; the mobile-polish pass 
 - Audit false alarm worth remembering: chamber `scrollWidth` > `clientWidth` flagged "horizontal overflow" — it's the `.chamber-mark` glyph bleeding at `right:-60px` behind `overflow-x: hidden`; clipped, not scrollable. Measure user-scrollability, not scrollWidth.
 - Verified: full loop at 390×844 with the walk hook + real gestures only (tap the arch medallion on canvas → chamber; touch-tap stand up; chevron hold turns the camera; ◉ takes the helm); sweep at 320px, landscape 844×390, Voyage 390/320, desktop 1440×900 both views (labels intact, hint single-line bottom); session-header wrap with the retreat link at 390; zero console errors throughout. Still owed: AA's real-device pass (thermals, iOS Safari, walking feel) — unchanged.
 
+## Retreat ambient hum fix (2026-07-14, branch `claude/ambient-sound-humming-fix-a6asfx`)
+
+AA: the retreat's ambient sound carried "an annoying humming/high-pitched tone that is persistent almost… not at all soothing" — wind, water, birds were fine; fix or remove the tone (the musical layer can return later).
+
+Root cause was a Web Audio wiring bug in three site motifs (`deck`, `arch`, `circle` in `lib/retreat/nature.ts`). Each built a **bipolar** swell/shimmer LFO and connected it straight to the motif's *own* gain node — the same outer gain that `setSiteAtmos` holds at `0` when the walker is far from that site. An AudioParam's value is intrinsic + summed inputs, so a sine LFO around an intrinsic of 0 swings **positive for half of every cycle**: the motif leaked audio continuously instead of staying silent until neared. The worst offender was `deck` — two pure high sines (≈1568/2093 Hz) — which bled across the whole valley as the persistent high-pitched tone; `arch` (organ) and `circle` (flute) leaked the same way as the lower hum.
+
+Fix: each motif now routes its sources through an **inner** gain node (baseline `0.6`) that carries the swell LFO, leaving the outer motif gain purely for proximity. The outer gain sits at a true `0` when far, so nothing leaks; the swell/shimmer character is preserved but only sounds at the site itself. The intended per-site sound-neighborhood design (character pass) is intact — no feature removed, just correctly gated. Verified with `npm run build` (clean). Natural sounds (wind/water/birds/footsteps) were never touched. Still owed: AA's on-device listen to confirm the valley is quiet on approach and the site sounds still read at each stop.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.
