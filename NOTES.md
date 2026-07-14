@@ -184,6 +184,8 @@ Root cause was a Web Audio wiring bug in three site motifs (`deck`, `arch`, `cir
 
 Fix: each motif now routes its sources through an **inner** gain node (baseline `0.6`) that carries the swell LFO, leaving the outer motif gain purely for proximity. The outer gain sits at a true `0` when far, so nothing leaks; the swell/shimmer character is preserved but only sounds at the site itself. The intended per-site sound-neighborhood design (character pass) is intact — no feature removed, just correctly gated. Verified with `npm run build` (clean). Natural sounds (wind/water/birds/footsteps) were never touched. Still owed: AA's on-device listen to confirm the valley is quiet on approach and the site sounds still read at each stop.
 
+Also added a project skill this pass: **`.claude/skills/ship/SKILL.md`** — a repeatable task-closeout (update docs → merge to `main` + push to production → session recap), at AA's ask. Invoke with `/ship` when a verified task is done.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.
