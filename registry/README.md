@@ -35,6 +35,8 @@ registry/
   descents/            compiled session graphs (the evolved data/sessions shape)
   drafts/              gauntlet candidates awaiting AA judgment — NOT shipped content
   schema/REGISTRY.md   field-by-field schema
+  plans/               planning docs for AA to rule on (REGISTRY-FRAMEWORKS.md)
+  plans/prompts/       the extraction prompts (GROUNDING, mechanism-hunt, …)
 ```
 
 ## Validation
