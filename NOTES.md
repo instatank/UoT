@@ -186,6 +186,15 @@ Fix: each motif now routes its sources through an **inner** gain node (baseline 
 
 Also added a project skill this pass: **`.claude/skills/ship/SKILL.md`** — a repeatable task-closeout (update docs → merge to `main` + push to production → session recap), at AA's ask. Invoke with `/ship` when a verified task is done.
 
+## Registry planning-docs reorg (2026-07-15, branch `claude/registry-docs-reorganize-y59lhh`)
+
+The Phase 1/2 planning docs had accumulated at the registry root, mixed in with the content spine (`taxonomy.json`, `passages/`, `parallels/`, `practices/`, `descents/`, `schema/`). Moved them into a dedicated `plans/` tree so the root reads as *content only*:
+
+- `REGISTRY-FRAMEWORKS.md` → `registry/plans/`
+- `GROUNDING.md`, `mechanism-hunt.md`, `corpus-sweep.md`, `thread-slots.md` → `registry/plans/prompts/`
+
+All five moved with `git mv` (100% rename — history preserved). Safe because the docs already anticipated it: each states its own `Target repo path: registry/plans/...`, and the `prompts/...` relative links inside `REGISTRY-FRAMEWORKS.md` resolve correctly once it sits in `plans/`. Nothing else referenced the old paths — `registry:check` validates JSON/data only, not these markdown files, and it still passes (empty scaffold, valid). Added a `plans/` + `plans/prompts/` entry to `registry/README.md`'s Layout block since it enumerates the structure and otherwise wouldn't surface the docs. Lesson: when a doc names its own destination path, the move is bookkeeping, not a content edit — grep for stale references, don't rewrite the doc.
+
 ## Corrections that mattered
 
 - SVG node labels have `pointer-events: none` (so text never steals clicks) — any browser automation must click the `circle.core` inside `g.mnode`, not the label text. Also `wrapLabel` splits labels across separate `<text>` elements, so Playwright `hasText` across a wrapped phrase fails (textContent concatenates without spaces); match on a single word.
